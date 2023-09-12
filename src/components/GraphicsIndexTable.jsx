@@ -5,29 +5,43 @@ import {
   IndexFilters,
   useSetIndexFiltersMode,
   useIndexResourceState,
-  Text,
-  ChoiceList,
-  RangeSlider,
+  // Text,
+  // ChoiceList,
+  // RangeSlider,
   Badge,
   Thumbnail,
   Spinner,
   Box,
   HorizontalStack,
+  InlineError,
+  Toast,
 } from "@shopify/polaris";
 //   import type {IndexFiltersProps, TabProps} from '@shopify/polaris';
 import React, { useState, useCallback, useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import AppModal from "./AppModal";
+import { editCategoryValue } from "../store/GallerySlice";
 
 function GraphicsIndexTable() {
   const [graphicList, setGraphicList] = useState([]);
+  const dispatch = useDispatch();
+  const categories = useSelector((state) => state.gallery.categories);
+  const [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay] =
+    useState(false);
+  const [editCategory, setEditCategory] = useState();
+  const [selectedCategoryValue, setSelectedCategoryValue] = useState("");
+  const [isEditCategoryError, setIsEditCategoryError] = useState(false); //if submit form with empty category
+  const [isSuccessCategoryEdited, setIsSuccessCategoryEdited] = useState(false);
   const [isGraphicLoaded, setIsGraphicLoaded] = useState(false);
   const galleryFromStore = useSelector((state) => state.gallery.gallery);
   const [isLoading, setIsLoading] = useState(false);
   const [queryValue, setQueryValue] = useState("");
+  const navigation = useNavigate();
 
   useEffect(() => {
     // Filter the galleryFromStore based on the queryValue
-    let filteredGalleryList = galleryFromStore;
+    let filteredGalleryList = [...galleryFromStore];
     if (queryValue.trim() !== "" && queryValue.length >= 3) {
       setIsLoading(true);
 
@@ -151,18 +165,18 @@ function GraphicsIndexTable() {
   const [moneySpent, setMoneySpent] = useState();
   const [taggedWith, setTaggedWith] = useState("");
 
-  const handleAccountStatusChange = useCallback(
-    (value) => setAccountStatus(value),
-    []
-  );
-  const handleMoneySpentChange = useCallback(
-    (value) => setMoneySpent(value),
-    []
-  );
-  const handleTaggedWithChange = useCallback(
-    (value) => setTaggedWith(value),
-    []
-  );
+  // const handleAccountStatusChange = useCallback(
+  //   (value) => setAccountStatus(value),
+  //   []
+  // );
+  // const handleMoneySpentChange = useCallback(
+  //   (value) => setMoneySpent(value),
+  //   []
+  // );
+  // const handleTaggedWithChange = useCallback(
+  //   (value) => setTaggedWith(value),
+  //   []
+  // );
   const handleFiltersQueryChange = useCallback((value) => {
     setQueryValue(value);
     if (value.length >= 3) {
@@ -230,42 +244,59 @@ function GraphicsIndexTable() {
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(graphicList);
 
-  const rowMarkup = graphicList.map(
-    ({ image, category, status, tags, id }, index) => (
-      <IndexTable.Row
-        id={id}
-        key={id}
-        selected={selectedResources.includes(id)}
-        position={index}
-      >
-        <IndexTable.Cell>
-          {/* if category is selected than dont show image */}
-          {selected !== 1 && <Thumbnail source={image[0]} size="small" />}
-        </IndexTable.Cell>
-        <IndexTable.Cell>{category}</IndexTable.Cell>
-        <IndexTable.Cell>
-          {selected !== 1
-            ? tags.map((tag, index) => (
-                <React.Fragment key={tag}>
-                  {tag}
-                  {tags[index + 1] && ","}
-                </React.Fragment>
-              ))
-            : "-"}
-        </IndexTable.Cell>
-        <IndexTable.Cell>
-          {selected !== 1 ? (
+  const isSelectedTabNotCategory = selected !== 1;
+  let rowMarkup;
+  // Render rows conditionally based on the selected tab
+  // Check if the selected tab is not 1 (i.e., not "Category")
+  if (isSelectedTabNotCategory) {
+    rowMarkup = graphicList.map(
+      ({ image, category, status, tags, id }, indexOuter) => (
+        <IndexTable.Row
+          id={id}
+          key={id}
+          selected={selectedResources.includes(id)}
+          onClick={() => navigation(`/edit-graphic/${id}`)}
+        >
+          <IndexTable.Cell>
+            <Thumbnail source={image} size="small" />
+          </IndexTable.Cell>
+          <IndexTable.Cell>{category}</IndexTable.Cell>
+          <IndexTable.Cell>
+            {tags.map((tag, index) => (
+              <React.Fragment key={tag}>
+                {tag}
+                {tags[index + 1] && ","}
+              </React.Fragment>
+            ))}
+          </IndexTable.Cell>
+          <IndexTable.Cell>
             <Badge status={status === "InActive" ? "critical" : "success"}>
               {status}
             </Badge>
-          ) : (
-            "-"
-          )}
-        </IndexTable.Cell>
+          </IndexTable.Cell>
+        </IndexTable.Row>
+      )
+    );
+  } else {
+    // Render rows for the "Category" tab
+    rowMarkup = categories.map(({ value }) => (
+      <IndexTable.Row
+        id={value}
+        key={value}
+        selected={selectedResources.includes(value)}
+        onClick={() => {
+          setIsEditCategoryModelDisplay(true);
+          setEditCategory(value);
+          setSelectedCategoryValue(value);
+        }}
+      >
+        <IndexTable.Cell></IndexTable.Cell>
+        <IndexTable.Cell>{value}</IndexTable.Cell>
+        <IndexTable.Cell>-</IndexTable.Cell>
+        <IndexTable.Cell>-</IndexTable.Cell>
       </IndexTable.Row>
-    )
-  );
-
+    ));
+  }
   return (
     <LegacyCard>
       <IndexFilters
@@ -325,6 +356,50 @@ function GraphicsIndexTable() {
         <HorizontalStack align="center">
           <Spinner accessibilityLabel="Spinner example" size="large" />
         </HorizontalStack>
+      )}
+
+      {isEditCategoryModelDisplay && (
+        <AppModal
+          isShowModal={isEditCategoryModelDisplay}
+          setIsShowModal={setIsEditCategoryModelDisplay}
+          title={"Edit Category"}
+          ButtonText={"Edit Category"}
+          isSecondaryButtonShow={false}
+          action={() => {
+            if (editCategory) {
+              dispatch(
+                editCategoryValue({
+                  categoryToEdit: selectedCategoryValue,
+                  newValue: editCategory,
+                })
+              );
+              setIsEditCategoryError(false);
+              setIsSuccessCategoryEdited(true);
+              setIsEditCategoryModelDisplay(false);
+              setEditCategory("");
+            } else {
+              setIsEditCategoryError(true);
+            }
+          }}
+        >
+          <TextField
+            placeholder="Enter Category Name"
+            value={editCategory}
+            onChange={(e) => {
+              setEditCategory(e);
+            }}
+          />
+          {isEditCategoryError && (
+            <InlineError message={"Category field can not be empty"} />
+          )}
+        </AppModal>
+      )}
+      {isSuccessCategoryEdited && (
+        <Toast
+          content="Category Edited Successful"
+          duration={2000}
+          onDismiss={() => setIsSuccessCategoryEdited(false)}
+        />
       )}
     </LegacyCard>
   );

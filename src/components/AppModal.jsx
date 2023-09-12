@@ -1,5 +1,5 @@
-import { Modal, Text } from "@shopify/polaris";
-import { Children, useCallback } from "react";
+import { Modal } from "@shopify/polaris";
+import { useCallback } from "react";
 
 function AppModal({
   isShowModal,

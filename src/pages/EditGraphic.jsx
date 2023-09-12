@@ -11,20 +11,51 @@ import {
   Text,
   TextField,
 } from "@shopify/polaris";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Media from "../components/Media";
 import { useDispatch, useSelector } from "react-redux";
-import { addGraphic } from "../store/GallerySlice";
-import { useNavigate } from "react-router-dom";
+import { editGraphic } from "../store/GallerySlice";
+import { useNavigate, useParams } from "react-router-dom";
 
-function AddGraphic() {
+function EditGraphic() {
   const navigate = useNavigate();
-  const [files, setFiles] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("Animals");
-  const [selectedStatus, setSelectedStatus] = useState("Active");
-  const [tags, setTags] = useState([]);
+
   const [tagInput, setTagInput] = useState("");
   const dispatch = useDispatch();
+  const params = useParams();
+  const galleryList = useSelector((state) => state.gallery.gallery);
+
+  // Data of Gallery which is selected for edit
+  const selectedGalleryData = galleryList.find(
+    (gallery) => gallery.id === parseInt(params.id)
+  );
+
+  const [selectedGallery, setSelectedGallery] = useState(selectedGalleryData);
+
+  const [files, setFiles] = useState([]);
+  const [myImages] = useState([selectedGallery.image]);
+
+  useEffect(() => {
+    function dataURLtoFile(dataurl, filename) {
+      var arr = dataurl.split(","),
+        mime = arr[0].match(/:(.*?);/)[1],
+        bstr = atob(arr[arr.length - 1]),
+        n = bstr.length,
+        u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      return new File([u8arr], filename, { type: mime });
+    }
+
+    const convertedFiles = myImages.map((image, index) => {
+      const blob = dataURLtoFile(image, "image/png");
+      const fileName = `image_${index}.png`; // Provide a unique file name
+      return new File([blob], fileName, { type: "image/png" });
+    });
+
+    setFiles(convertedFiles);
+  }, [selectedGallery, myImages]);
 
   const handleTagInputChange = useCallback((value) => {
     setTagInput(value);
@@ -32,25 +63,30 @@ function AddGraphic() {
 
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() !== "") {
-      setTags([...tags, tagInput.trim()]);
+      setSelectedGallery({
+        ...selectedGallery,
+        tags: [...selectedGallery.tags, tagInput.trim()],
+      });
       setTagInput("");
     }
-  }, [tags, tagInput]);
+  }, [tagInput, selectedGallery]);
 
   const handleRemoveTag = useCallback(
     (indexToRemove) => {
-      const updatedTags = tags.filter((tag, index) => index !== indexToRemove);
-      setTags(updatedTags);
+      const updatedTags = selectedGallery.tags.filter(
+        (tag, index) => index !== indexToRemove
+      );
+      setSelectedGallery({ ...selectedGallery, tags: updatedTags });
     },
-    [tags]
+    [selectedGallery]
   );
   const handleSelectChangeCategory = useCallback(
-    (value) => setSelectedCategory(value),
+    (value) => setSelectedGallery({ ...selectedGallery, category: value }),
     []
   );
 
   const handleSelectChangeStatus = useCallback(
-    (value) => setSelectedStatus(value),
+    (value) => setSelectedGallery({ ...selectedGallery, status: value }),
     []
   );
 
@@ -68,36 +104,30 @@ function AddGraphic() {
 
     reader.readAsDataURL(file);
   }
+  const editGraphicData = () => {
+    const base64Images = []; // Initialize an empty array to store base64 strings
 
-  function filesToBase64Array(files, callback) {
-    const base64Array = [];
-    let processedCount = 0;
+    // Loop through each file in the files array
+    for (const file of files) {
+      fileToBase64(file, (base64Image) => {
+        base64Images.push(base64Image);
 
-    files.forEach((file, index) => {
-      fileToBase64(file, (base64String) => {
-        base64Array[index] = base64String;
-        processedCount++;
+        if (base64Images.length === files.length) {
+          dispatch(
+            editGraphic({
+              category: selectedGallery.category,
+              tags: selectedGallery.tags,
+              status: selectedGallery.status,
+              image: base64Images, // Use the array of base64 images here
+              id: selectedGallery.id,
+            })
+          );
 
-        // Check if all files have been processed
-        if (processedCount === files.length) {
-          callback(base64Array);
+          // Navigate after all files have been processed
+          navigate("/gallery-listing");
         }
       });
-    });
-  }
-
-  const saveGraphic = () => {
-    filesToBase64Array(files, (base64Images) => {
-      dispatch(
-        addGraphic({
-          category: selectedCategory,
-          tags: tags,
-          status: selectedStatus,
-          image: base64Images,
-        })
-      );
-    });
-    navigate("/gallery-listing");
+    }
   };
 
   const categoryOptions = useSelector((state) => state.gallery.categories);
@@ -110,7 +140,7 @@ function AddGraphic() {
     <Box>
       <Page
         backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
-        title="Add a Graphic"
+        title="Edit a Graphic"
       >
         <Layout>
           <Layout.AnnotatedSection
@@ -124,7 +154,7 @@ function AddGraphic() {
                   label="Select a Category"
                   options={categoryOptions}
                   onChange={handleSelectChangeCategory}
-                  value={selectedCategory}
+                  value={selectedGallery.category}
                 />
               </FormLayout>
             </Card>
@@ -138,7 +168,7 @@ function AddGraphic() {
                 Media
               </Text>
             </Box>
-            <Media files={files} setFiles={setFiles} />
+            <Media files={files} setFiles={setFiles} isDisabled={true} />
           </Card>
         </Box>
 
@@ -158,10 +188,10 @@ function AddGraphic() {
                     placeholder="Enter a tag"
                   />
                   <Button onClick={handleAddTag}>Add Tag</Button>
-                  {tags.length > 0 && (
+                  {selectedGallery.tags.length > 0 && (
                     <Box>
                       <HorizontalStack>
-                        {tags.map((tag, index) => (
+                        {selectedGallery.tags.map((tag, index) => (
                           <Box style={{ marginRight: "10px" }} key={index}>
                             <Tag onRemove={() => handleRemoveTag(index)}>
                               {tag}
@@ -183,7 +213,7 @@ function AddGraphic() {
               id="graphicsStatus"
               title="Graphics Status"
               description="Indicate whether you intend to Display this graphic to customers
-              or not."
+                or not."
             >
               <Card sectioned>
                 <FormLayout>
@@ -191,7 +221,7 @@ function AddGraphic() {
                     label="Status"
                     options={statusOptions}
                     onChange={handleSelectChangeStatus}
-                    value={selectedStatus}
+                    value={selectedGallery.status}
                   />
                 </FormLayout>
               </Card>
@@ -201,8 +231,8 @@ function AddGraphic() {
 
         <HorizontalStack align="end">
           <Box style={{ marginBottom: "10px" }}>
-            <Button primary onClick={saveGraphic}>
-              Save
+            <Button primary onClick={editGraphicData}>
+              Edit Graphic
             </Button>
           </Box>
         </HorizontalStack>
@@ -211,4 +241,4 @@ function AddGraphic() {
   );
 }
 
-export default AddGraphic;
+export default EditGraphic;

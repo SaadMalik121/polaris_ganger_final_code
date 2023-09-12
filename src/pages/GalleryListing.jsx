@@ -18,6 +18,7 @@ function GalleryListing() {
   const [newCategory, setNewCategory] = useState();
   const [isNewCategoryError, setIsNewCategoryError] = useState(false); //if submit form with empty category
   const [isSuccessCategoryAdded, setIsSuccessCategoryAdded] = useState(false);
+
   const dispatch = useDispatch();
   return (
     <Box padding={5}>

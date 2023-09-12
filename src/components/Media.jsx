@@ -2,7 +2,7 @@ import { DropZone, LegacyStack, Thumbnail, Text } from "@shopify/polaris";
 import { NoteMinor } from "@shopify/polaris-icons";
 import { useCallback } from "react";
 
-export default function Media({ files, setFiles }) {
+export default function Media({ files, setFiles, isDisabled = false }) {
   //   const [files, setFiles] = useState([]);
 
   const handleDropZoneDrop = useCallback(
@@ -51,6 +51,7 @@ export default function Media({ files, setFiles }) {
       errorOverlayText="Only .png or .svg type can be accepted"
       overlayText="Drop"
       overlay={true}
+      disabled={isDisabled}
     >
       {uploadedFiles}
       {fileUpload}
