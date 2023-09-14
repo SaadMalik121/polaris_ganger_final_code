@@ -1,5 +1,7 @@
 import { Modal } from "@shopify/polaris";
 import { useCallback } from "react";
+import { IntlProvider } from "react-intl";
+import { messagesInEnglish, messagesInFrench } from "../utils/Languages";
 
 function AppModal({
   isShowModal,

@@ -1,5 +1,5 @@
-import { Box, Card, HorizontalStack, Text } from "@shopify/polaris";
-import React from "react";
+import { Box, Card, HorizontalStack, Select, Text } from "@shopify/polaris";
+import React, { useCallback, useState } from "react";
 import { NavLink } from "react-router-dom";
 
 function Navigation() {
@@ -32,6 +32,18 @@ function Navigation() {
             }}
           >
             <Text>Gallery</Text>
+          </NavLink>
+        </Box>
+        <Box>
+          <NavLink
+            to={"/order-listing"}
+            style={{
+              textDecoration: "none",
+              color: "white",
+              padding: "2px ",
+            }}
+          >
+            <Text>Orders</Text>
           </NavLink>
         </Box>
       </HorizontalStack>

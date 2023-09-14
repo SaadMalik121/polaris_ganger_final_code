@@ -9,5 +9,5 @@ export const api = axios.create({
   baseURL: "https://gangr.uforiaprojects.com/api/local/",
 });
 
-export const postURL = "?shop=kamrandevstore.myshopify.com";
+export const postURL = "shop=kamrandevstore.myshopify.com";
 export const preURL = "https://gangr.uforiaprojects.com/api/local";

@@ -15,9 +15,11 @@ import {
   getDashboard,
   initializeDashBoardData,
 } from "../store/dashBoardSlice";
+import { useIntl } from "react-intl";
 
 function DashBoard() {
   // const [dashboardData, setDashboardData] = useState(null);
+  const { messages } = useIntl();
   const dashboardData = useSelector(getDashboard);
   const dataStatus = useSelector(getDashBoardDataStatus);
 
@@ -29,9 +31,9 @@ function DashBoard() {
   return (
     <Box padding={5}>
       <Page
-        title="Welcome to Ganger App Dashboard"
+        title={messages.TITLE}
         primaryAction={{
-          content: "Switch Plan",
+          content: messages.SWITCH_PLAN,
           url: "/addRegularProduct",
         }}
       >
@@ -57,7 +59,7 @@ function DashBoard() {
             <Card>
               <Text as="p" variant="bodyMd">
                 <HorizontalStack>
-                  Your Current Plan is &nbsp;
+                  {messages.CURRENT_PLAN} &nbsp;
                   <Text as="h2" fontWeight="bold">
                     Starter
                   </Text>
@@ -72,13 +74,13 @@ function DashBoard() {
                 <HorizontalStack align="space-between">
                   <VerticalStack align="center">
                     <Text as="h2" variant="headingMd">
-                      Plan Details
+                      {messages.PLAN_DETAILS}
                     </Text>
                   </VerticalStack>
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Total Sheets
+                      {messages.TOTAL_SHEETS}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.plan.gang_sheet_limit}
@@ -87,7 +89,7 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Consumed Sheets
+                      {messages.CONSUMED_SHEETS}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.plan.gang_sheet_limit -
@@ -97,7 +99,7 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Remaining Sheets
+                      {messages.REMAINING_SHEETS}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.remainingSheets}
@@ -106,7 +108,7 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Remaining BG Remover
+                      {messages.REMAINING_BG_REMOVER}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.remainingBgRemover}
@@ -123,7 +125,7 @@ function DashBoard() {
                 <HorizontalStack align="space-between">
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Total Sale
+                      {messages.TOTAL_SALE}
                     </Text>
                     <Text as="p">
                       ${dashboardData?.details?.shop?.orders_sum_price || 0}
@@ -132,7 +134,7 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Registered Customers
+                      {messages.REGISTERED_CUSTOMERS}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.shop?.customers_count}
@@ -141,7 +143,7 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      Total Orders Place
+                      {messages.TOTAL_ORDERS_PLACED}
                     </Text>
                     {dashboardData?.details?.shop?.orders_count}
                     <Text as="p"></Text>
@@ -149,7 +151,7 @@ function DashBoard() {
 
                   <Box>
                     <Text variant="headingMd" as="h6">
-                      Total Products
+                      {messages.TOTAL_PRODUCTS}
                     </Text>
                     {dashboardData?.details?.shop?.products_count}
                     <Text as="p"></Text>
