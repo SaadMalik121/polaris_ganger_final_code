@@ -18,7 +18,6 @@ import {
 import { useIntl } from "react-intl";
 
 function DashBoard() {
-  // const [dashboardData, setDashboardData] = useState(null);
   const { messages } = useIntl();
   const dashboardData = useSelector(getDashboard);
   const dataStatus = useSelector(getDashBoardDataStatus);

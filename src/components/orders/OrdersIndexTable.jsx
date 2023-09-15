@@ -1,39 +1,28 @@
 import {
-  TextField,
   IndexTable,
   LegacyCard,
   IndexFilters,
   useSetIndexFiltersMode,
   useIndexResourceState,
-  // Text,
-  // ChoiceList,
-  // RangeSlider,
+  ChoiceList,
   Badge,
-  Thumbnail,
-  Spinner,
-  Box,
-  HorizontalStack,
-  InlineError,
-  Toast,
   Pagination,
+  Spinner,
+  HorizontalStack,
+  Box,
+  Text,
 } from "@shopify/polaris";
-//   import type {IndexFiltersProps, TabProps} from '@shopify/polaris';
 import React, { useState, useCallback, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import AppModal from "../AppModal";
-import { editCategoryValue } from "../../store/GallerySlice";
 import ordersApi from "../../api/orders";
 
 function OrdersIndexTable() {
+  const appliedFilters = [];
+
   const [selectedOrderStatus, setSelectedOrderStatus] = useState();
-  const dispatch = useDispatch();
-  const categories = useSelector((state) => state.gallery.categories);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [selected, setSelected] = useState(0);
 
-  const [isGraphicLoaded, setIsGraphicLoaded] = useState(false);
-  const galleryFromStore = useSelector((state) => state.gallery.gallery);
   const [isLoading, setIsLoading] = useState(false);
   const [queryValue, setQueryValue] = useState("");
   const navigate = useNavigate();
@@ -49,75 +38,89 @@ function OrdersIndexTable() {
     });
     setOrderData(data);
     setIsLoadingOrders(false);
+    setIsLoading(false);
+  }, []);
+
+  const handleOrderStatusChange = useCallback(
+    (value) => {
+      setOrderStatus(value);
+      getData({
+        payload: {
+          type: value,
+        },
+      });
+    },
+    [getData]
+  );
+
+  const handleDateStatusChange = useCallback((value) => {
+    setDateStatus(value);
   }, []);
 
   useEffect(() => {
-    // Filter the galleryFromStore based on the queryValue
-    let filteredGalleryList = [...galleryFromStore];
-    if (queryValue.trim() !== "" && queryValue.length >= 3) {
-      setIsLoading(true);
-
-      filteredGalleryList = galleryFromStore.filter((product) => {
-        const lowerQuery = queryValue.toLowerCase();
-        const lowerCategory = product.category.toLowerCase();
-
-        return (
-          lowerCategory.includes(lowerQuery) ||
-          product.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))
-        );
-      });
-    }
-  }, [galleryFromStore, queryValue]);
-
-  useEffect(() => {
+    //All Tab selected
     if (selected === 0) {
+      handleOrderStatusChange([]);
       getData();
     }
-
-    if (selected === 1) {
+    //Pending Tab selected
+    else if (selected === 1) {
+      handleOrderStatusChange(["Pending"]);
       setSelectedOrderStatus("Pending");
       getData({
         payload: {
-          type: "Pending",
+          type: ["Pending"],
         },
       });
     }
-    if (selected === 2) {
+    //Approved Tab Selected
+    else if (selected === 2) {
+      handleOrderStatusChange(["Approved"]);
+
       setSelectedOrderStatus("Approved");
 
       getData({
         payload: {
-          type: "Approved",
+          type: ["Approved"],
         },
       });
     }
-    if (selected === 3) {
+    //Disapproved Tab Selected
+    else if (selected === 3) {
+      handleOrderStatusChange(["Disapproved"]);
+
       setSelectedOrderStatus("Disapproved");
 
       getData({
         payload: {
-          type: "Disapproved",
+          type: ["Disapproved"],
         },
       });
     }
-    if (selected === 4) {
+    //Resubmitted Tab Selected
+    else if (selected === 4) {
+      handleOrderStatusChange(["Resubmitted"]);
+
       setSelectedOrderStatus("Resubmitted");
 
       getData({
         payload: {
-          type: "Resubmitted",
+          type: ["Resubmitted"],
         },
       });
     }
-  }, [selected, getData]);
-  // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const [itemStrings] = useState([
+  }, [selected, getData, handleOrderStatusChange]);
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  //Tabs
+  const [itemStrings, setItemStrings] = useState([
     "All",
     "Pending",
     "Approved",
     "Disapproved",
     "ReSubmitted",
   ]);
+
   // const deleteView = (index) => {
   //   const newItemStrings = [...itemStrings];
   //   newItemStrings.splice(index, 1);
@@ -178,12 +181,12 @@ function OrdersIndexTable() {
     //         },
     //       ],
   }));
-  // const onCreateNewView = async (value) => {
-  //   await sleep(500);
-  //   setItemStrings([...itemStrings, value]);
-  //   setSelected(itemStrings.length);
-  //   return true;
-  // };
+  const onCreateNewView = async (value) => {
+    await sleep(500);
+    setItemStrings([...itemStrings, value]);
+    setSelected(itemStrings.length);
+    return true;
+  };
   const sortOptions = [
     { label: "Order", value: "order asc", directionLabel: "Ascending" },
     { label: "Order", value: "order desc", directionLabel: "Descending" },
@@ -196,7 +199,9 @@ function OrdersIndexTable() {
   ];
   const [sortSelected, setSortSelected] = useState(["order asc"]);
   const { mode, setMode } = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    handleFiltersClearAll();
+  };
 
   // const onHandleSave = async () => {
   //   await sleep(1);
@@ -217,86 +222,167 @@ function OrdersIndexTable() {
   //         disabled: false,
   //         loading: false,
   //       };
-  const [accountStatus, setAccountStatus] = useState();
-  const [moneySpent, setMoneySpent] = useState();
-  const [taggedWith, setTaggedWith] = useState("");
+  const [orderStatus, setOrderStatus] = useState();
+  const [dateStatus, setDateStatus] = useState();
+  //   const [taggedWith, setTaggedWith] = useState("");
 
-  // const handleAccountStatusChange = useCallback(
-  //   (value) => setAccountStatus(value),
-  //   []
-  // );
-  // const handleMoneySpentChange = useCallback(
-  //   (value) => setMoneySpent(value),
-  //   []
-  // );
-  // const handleTaggedWithChange = useCallback(
-  //   (value) => setTaggedWith(value),
-  //   []
-  // );
-  const handleFiltersQueryChange = useCallback((value) => {
-    setQueryValue(value);
-    if (value.length >= 3) {
-      setIsLoading(true);
-      getData({
-        payload: {
-          type: selectedOrderStatus,
-          keyword: value,
-        },
-      });
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 300);
+  //   const handleMoneySpentChange = useCallback(
+  //     (value) => setMoneySpent(value),
+  //     []
+  //   );
+  //   const handleTaggedWithChange = useCallback(
+  //     (value) => setTaggedWith(value),
+  //     []
+  //   );
+  const handleFiltersQueryChange = useCallback(
+    (value) => {
+      setQueryValue(value);
+      if (value.length >= 3) {
+        setIsLoading(true);
+        getData({
+          payload: {
+            type: selectedOrderStatus,
+            keyword: value,
+          },
+        });
+      } else if (value.trim() === "") {
+        getData();
+      }
+    },
+    [getData, selectedOrderStatus]
+  );
+  const handleOrderStatusRemove = useCallback(() => {
+    if (selected === 1) {
+      setOrderStatus(["Pending"]);
+      getData({ payload: { type: ["Pending"] } });
+    } else if (selected === 2) {
+      setOrderStatus(["Approved"]);
+      getData({ payload: { type: ["Approved"] } });
+    } else if (selected === 3) {
+      setOrderStatus(["Disapproved"]);
+      getData({ payload: { type: ["Disapproved"] } });
+    } else if (selected === 4) {
+      setOrderStatus(["Resubmitted"]);
+      getData({ payload: { type: ["Resubmitted"] } });
+    } else {
+      setOrderStatus([]);
+      getData();
     }
-  }, []);
-  const handleAccountStatusRemove = useCallback(
-    () => setAccountStatus(undefined),
-    []
-  );
-  const handleMoneySpentRemove = useCallback(
-    () => setMoneySpent(undefined),
-    []
-  );
-  const handleTaggedWithRemove = useCallback(() => setTaggedWith(""), []);
+  }, [getData, selected]);
+  const hadleDateStatusRemove = useCallback(() => setDateStatus(undefined), []);
+  //   const handleTaggedWithRemove = useCallback(() => setTaggedWith(""), []);
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
   const handleFiltersClearAll = useCallback(() => {
-    handleAccountStatusRemove();
-    handleMoneySpentRemove();
-    handleTaggedWithRemove();
+    handleOrderStatusRemove();
+    hadleDateStatusRemove();
+    // handleTaggedWithRemove();
     handleQueryValueRemove();
   }, [
-    handleAccountStatusRemove,
-    handleMoneySpentRemove,
+    handleOrderStatusRemove,
+    hadleDateStatusRemove,
     handleQueryValueRemove,
-    handleTaggedWithRemove,
+    // handleTaggedWithRemove,
   ]);
 
-  const filters = [];
+  const filters = [
+    {
+      key: "order_status",
+      label: "Order status",
+      filter: (
+        <ChoiceList
+          title="Order status"
+          titleHidden
+          choices={[
+            { label: "Pending", value: "Pending" },
+            { label: "Print Queue", value: "Print Queue" },
+            { label: "Printed", value: "Printed" },
+            { label: "Dispatched", value: "Dispatched" },
+            { label: "On Hold", value: "On Hold" },
+            { label: "Cancelled", value: "Cancelled" },
+            { label: "Refunded", value: "Refunded" },
+            { label: "Ready For Collection", value: "Ready For Collection" },
+          ]}
+          selected={orderStatus || []}
+          onChange={handleOrderStatusChange}
+          allowMultiple
+        />
+      ),
+      shortcut: true,
+    },
+    {
+      key: "Date",
+      label: "Date",
+      filter: (
+        <>
+          <ChoiceList
+            title="Date"
+            titleHidden
+            choices={[
+              { label: "Today", value: "Today" },
+              { label: "Last 7 Days", value: "Last 7 Days" },
+              { label: "Last 30 Days", value: "Last 30 Days" },
+              { label: "Last 90 Days", value: "Last 90 Days" },
+              { label: "Last 12 Months", value: "Last 12 Months" },
+              { label: "Custom", value: "Custom" },
+            ]}
+            selected={dateStatus || []}
+            onChange={handleDateStatusChange}
+          />
+          {dateStatus?.includes("Custom") && (
+            <div>
+              <Text>Starting</Text>
+              <input
+                type="date"
+                placeholder="Custom Start Date"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  margin: "10px 0px",
+                }}
+              />
+              <Text>Ending</Text>
 
-  const appliedFilters = [];
-  if (accountStatus && !isEmpty(accountStatus)) {
-    const key = "accountStatus";
+              <input
+                type="date"
+                placeholder="Custom End Date"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  margin: "10px 0px",
+                }}
+              />
+            </div>
+          )}
+        </>
+      ),
+      shortcut: true,
+    },
+  ];
+
+  if (orderStatus && !isEmpty(orderStatus)) {
+    const key = "order_status";
     appliedFilters.push({
       key,
-      label: disambiguateLabel(key, accountStatus),
-      onRemove: handleAccountStatusRemove,
+      label: disambiguateLabel(key, orderStatus),
+      onRemove: handleOrderStatusRemove,
     });
   }
-  if (moneySpent) {
-    const key = "moneySpent";
+  if (dateStatus) {
+    const key = "Date";
     appliedFilters.push({
       key,
-      label: disambiguateLabel(key, moneySpent),
-      onRemove: handleMoneySpentRemove,
+      label: disambiguateLabel(key, dateStatus),
+      onRemove: hadleDateStatusRemove,
     });
   }
-  if (!isEmpty(taggedWith)) {
-    const key = "taggedWith";
-    appliedFilters.push({
-      key,
-      label: disambiguateLabel(key, taggedWith),
-      onRemove: handleTaggedWithRemove,
-    });
-  }
+  //   if (!isEmpty(taggedWith)) {
+  //     const key = "taggedWith";
+  //     appliedFilters.push({
+  //       key,
+  //       label: disambiguateLabel(key, taggedWith),
+  //       onRemove: handleTaggedWithRemove,
+  //     });
+  //   }
 
   const resourceName = {
     singular: "order",
@@ -399,9 +485,9 @@ function OrdersIndexTable() {
           selected={selected}
           onSelect={setSelected}
           canCreateNewView={false}
-          // onCreateNewView={onCreateNewView}
+          onCreateNewView={onCreateNewView}
           filters={filters}
-          // appliedFilters={appliedFilters}
+          appliedFilters={appliedFilters}
           onClearAll={handleFiltersClearAll}
           mode={mode}
           setMode={setMode}
@@ -482,11 +568,11 @@ function OrdersIndexTable() {
 
   function disambiguateLabel(key, value) {
     switch (key) {
-      case "moneySpent":
-        return `Money spent is between $${value[0]} and $${value[1]}`;
-      case "taggedWith":
-        return `Tagged with ${value}`;
-      case "accountStatus":
+      //   case "moneySpent":
+      //     return `Money spent is between $${value[0]} and $${value[1]}`;
+      //   case "taggedWith":
+      //     return `Tagged with ${value}`;
+      case "order_status":
         return value.map((val) => `Customer ${val}`).join(", ");
       default:
         return value;

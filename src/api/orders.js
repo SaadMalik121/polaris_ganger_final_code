@@ -1,7 +1,7 @@
 import { postURL, api } from "./config/index";
 
 const getOrdersListing = async ({ pageNum, payload }) => {
-  console.log(payload);
+  //payload contains keyword and type (pending/approved etc)
   const { data } = await api.post(
     `getOrders?page=${pageNum ? pageNum : "1"}&${postURL}`,
     { ...payload }
@@ -14,5 +14,11 @@ const getOrderDetails = async (id) => {
   return data;
 };
 
-const ordersApi = { getOrdersListing, getOrderDetails };
+const getOrderHistory = async (id) => {
+  const { data } = await api.post(`getOrderHistory?page=1&${postURL}`, {
+    id: id,
+  });
+  return data;
+};
+const ordersApi = { getOrdersListing, getOrderDetails, getOrderHistory };
 export default ordersApi;
