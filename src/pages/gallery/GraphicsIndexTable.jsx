@@ -15,18 +15,26 @@ import {
   HorizontalStack,
   InlineError,
   Toast,
+  Pagination,
+  Card,
+  Modal,
+  Select,
 } from "@shopify/polaris";
 //   import type {IndexFiltersProps, TabProps} from '@shopify/polaris';
 import React, { useState, useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import AppModal from "./AppModal";
-import { editCategoryValue } from "../store/GallerySlice";
+import AppModal from "../../components/AppModal";
+import { editCategoryValue } from "../../store/GallerySlice";
+import axios from "axios";
 
-function GraphicsIndexTable() {
+function GraphicsIndexTable({
+  categoryList,
+  getCategories,
+  isLoadingCategories,
+}) {
   const [graphicList, setGraphicList] = useState([]);
   const dispatch = useDispatch();
-  const categories = useSelector((state) => state.gallery.categories);
   const [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay] =
     useState(false);
   const [editCategory, setEditCategory] = useState();
@@ -38,6 +46,49 @@ function GraphicsIndexTable() {
   const [isLoading, setIsLoading] = useState(false);
   const [queryValue, setQueryValue] = useState("");
   const navigation = useNavigate();
+  const [selectedActiveStatus, setSelectedActiveStatus] = useState(
+    selectedCategoryValue?.active ? true : false
+  );
+
+  //Modal
+  const handleChange = useCallback(
+    () => setIsEditCategoryModelDisplay(!isEditCategoryModelDisplay),
+    [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay]
+  );
+
+  //Edit Category
+  const handleStatusChange = useCallback(
+    (value) => {
+      setSelectedActiveStatus(value === "true" ? true : false);
+    },
+    [setSelectedActiveStatus]
+  );
+
+  const activeOptions = [
+    { label: "Active", value: true },
+    { label: "InActive", value: false },
+  ];
+
+  const handleEditCategory = useCallback(async () => {
+    await axios.post(
+      "https://gangr.uforiaprojects.com/api/local/saveCategory?shop=kamrandevstore.myshopify.com",
+      {
+        active: selectedActiveStatus,
+        title: editCategory,
+        id: selectedCategoryValue?.id,
+      }
+    );
+    setIsEditCategoryError(false);
+    setIsSuccessCategoryEdited(true);
+    setIsEditCategoryModelDisplay(false);
+    setEditCategory("");
+    getCategories();
+  }, [
+    editCategory,
+    selectedActiveStatus,
+    selectedCategoryValue,
+    getCategories,
+  ]);
 
   useEffect(() => {
     // Filter the galleryFromStore based on the queryValue
@@ -58,7 +109,8 @@ function GraphicsIndexTable() {
 
     setGraphicList(filteredGalleryList);
     setIsGraphicLoaded(true);
-  }, [galleryFromStore, queryValue]);
+  }, [galleryFromStore, queryValue, categoryList]);
+
   // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const [itemStrings] = useState(["All", "Categories", "Graphics"]);
   // const deleteView = (index) => {
@@ -279,26 +331,26 @@ function GraphicsIndexTable() {
     );
   } else {
     // Render rows for the "Category" tab
-    rowMarkup = categories.map(({ value }) => (
+    rowMarkup = categoryList?.data.map((data) => (
       <IndexTable.Row
-        id={value}
-        key={value}
-        selected={selectedResources.includes(value)}
+        id={data?.id}
+        key={data?.id}
+        selected={selectedResources.includes(data?.id)}
         onClick={() => {
           setIsEditCategoryModelDisplay(true);
-          setEditCategory(value);
-          setSelectedCategoryValue(value);
+          setEditCategory(data?.title);
+          setSelectedCategoryValue(data);
         }}
       >
         <IndexTable.Cell></IndexTable.Cell>
-        <IndexTable.Cell>{value}</IndexTable.Cell>
+        <IndexTable.Cell>{data?.title}</IndexTable.Cell>
         <IndexTable.Cell>-</IndexTable.Cell>
         <IndexTable.Cell>-</IndexTable.Cell>
       </IndexTable.Row>
     ));
   }
   return (
-    <LegacyCard>
+    <>
       <IndexFilters
         sortOptions={sortOptions}
         sortSelected={sortSelected}
@@ -335,7 +387,8 @@ function GraphicsIndexTable() {
         >
           <Spinner />
         </Box>
-      ) : !isLoading ? (
+      ) : !isLoadingCategories && //when category is loading
+        !isLoading ? ( //when typing more than 3 words (loader display)
         <IndexTable
           resourceName={resourceName}
           itemCount={graphicList.length}
@@ -353,35 +406,31 @@ function GraphicsIndexTable() {
           {rowMarkup}
         </IndexTable>
       ) : (
-        <HorizontalStack align="center">
-          <Spinner accessibilityLabel="Spinner example" size="large" />
-        </HorizontalStack>
+        <Box padding={10}>
+          <HorizontalStack align="center">
+            <Spinner accessibilityLabel="Spinner example" size="large" />
+          </HorizontalStack>
+        </Box>
       )}
 
-      {isEditCategoryModelDisplay && (
-        <AppModal
-          isShowModal={isEditCategoryModelDisplay}
-          setIsShowModal={setIsEditCategoryModelDisplay}
-          title={"Edit Category"}
-          ButtonText={"Edit Category"}
-          isSecondaryButtonShow={false}
-          action={() => {
+      {/* Edit Category MODAL */}
+
+      <Modal
+        open={isEditCategoryModelDisplay}
+        onClose={handleChange}
+        title={"Edit Category"}
+        primaryAction={{
+          content: "Edit Category",
+          onAction: () => {
             if (editCategory) {
-              dispatch(
-                editCategoryValue({
-                  categoryToEdit: selectedCategoryValue,
-                  newValue: editCategory,
-                })
-              );
-              setIsEditCategoryError(false);
-              setIsSuccessCategoryEdited(true);
-              setIsEditCategoryModelDisplay(false);
-              setEditCategory("");
+              handleEditCategory();
             } else {
               setIsEditCategoryError(true);
             }
-          }}
-        >
+          },
+        }}
+      >
+        <Modal.Section>
           <TextField
             placeholder="Enter Category Name"
             value={editCategory}
@@ -392,8 +441,16 @@ function GraphicsIndexTable() {
           {isEditCategoryError && (
             <InlineError message={"Category field can not be empty"} />
           )}
-        </AppModal>
-      )}
+          <Box style={{ marginTop: "20px" }}>
+            <Select
+              options={activeOptions}
+              onChange={handleStatusChange}
+              value={selectedActiveStatus}
+            />
+          </Box>
+        </Modal.Section>
+      </Modal>
+
       {isSuccessCategoryEdited && (
         <Toast
           content="Category Edited Successful"
@@ -401,7 +458,29 @@ function GraphicsIndexTable() {
           onDismiss={() => setIsSuccessCategoryEdited(false)}
         />
       )}
-    </LegacyCard>
+      {/* Pagination */}
+      {selected === 1 && categoryList?.last_page > 1 && (
+        <Box
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            marginTop: "30px",
+          }}
+        >
+          <Pagination
+            hasPrevious={categoryList?.current_page > 1}
+            onPrevious={() => {
+              getCategories(categoryList?.current_page - 1);
+            }}
+            hasNext={categoryList?.current_page < categoryList?.last_page}
+            onNext={() => {
+              getCategories(categoryList?.current_page + 1);
+            }}
+          />
+        </Box>
+      )}
+    </>
   );
 
   function disambiguateLabel(key, value) {

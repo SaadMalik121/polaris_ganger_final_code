@@ -3,13 +3,11 @@ import { NoteMinor } from "@shopify/polaris-icons";
 import { useCallback } from "react";
 
 export default function Media({ files, setFiles, isDisabled = false }) {
-  //   const [files, setFiles] = useState([]);
-
   const handleDropZoneDrop = useCallback(
     (_dropFiles, acceptedFiles, _rejectedFiles) => {
       setFiles((files) => [...files, ...acceptedFiles]);
     },
-    []
+    [setFiles]
   );
 
   const validImageTypes = ["image/png"];

@@ -427,7 +427,6 @@ function OrdersIndexTable() {
         </IndexTable.Cell>
         <IndexTable.Cell>{customer?.name}</IndexTable.Cell>
         <IndexTable.Cell>{price}</IndexTable.Cell>
-        {/* <IndexTable.Cell>{sheets_download_status}</IndexTable.Cell> */}
         <IndexTable.Cell>
           <HorizontalStack align="center">
             <Badge

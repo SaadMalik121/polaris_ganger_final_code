@@ -15,6 +15,7 @@ import {
   Thumbnail,
   VerticalStack,
 } from "@shopify/polaris";
+import axios from "axios";
 
 function OrderDetails() {
   const { id } = useParams();
@@ -33,6 +34,7 @@ function OrderDetails() {
   useEffect(() => {
     getOrderDetail();
   }, [getOrderDetail]);
+
   return (
     <div>
       {!isLoadingOrderDetail ? (

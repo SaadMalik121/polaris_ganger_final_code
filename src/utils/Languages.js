@@ -1,4 +1,5 @@
 const messagesInFrench = {
+  //Dashboard
   CURRENT_PLAN: "Votre plan actuel",
   PLAN_DETAILS: "Détails du plan",
   CONSUMED_SHEETS: "Feuilles consommées",
@@ -11,8 +12,11 @@ const messagesInFrench = {
   TOTAL_SHEETS: "Total des feuilles",
   TITLE: "Bienvenue sur le tableau de bord de l'application Ganger",
   SWITCH_PLAN: "Changer de forfait",
+
+  //Gallery
 };
 const messagesInEnglish = {
+  //Dashboard
   CURRENT_PLAN: "Your Current Plan FRENCH",
   PLAN_DETAILS: "Plan Details",
   CONSUMED_SHEETS: "Consumed Sheets",
@@ -25,6 +29,9 @@ const messagesInEnglish = {
   TOTAL_SHEETS: "Total Sheets",
   TITLE: "Welcome to Ganger App Dashboard",
   SWITCH_PLAN: "Switch Plan",
+
+  //Gallery
+  EmptyCategoryError: "Category field can not be empty",
 };
 
 export { messagesInEnglish, messagesInFrench };

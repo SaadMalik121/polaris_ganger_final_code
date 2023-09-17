@@ -79,26 +79,26 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      {messages.TOTAL_SHEETS}
+                      {messages?.TOTAL_SHEETS}
                     </Text>
                     <Text as="p">
-                      {dashboardData?.details?.plan.gang_sheet_limit}
+                      {dashboardData?.details?.plan?.gang_sheet_limit}
                     </Text>
                   </Box>
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      {messages.CONSUMED_SHEETS}
+                      {messages?.CONSUMED_SHEETS}
                     </Text>
                     <Text as="p">
-                      {dashboardData?.details?.plan.gang_sheet_limit -
+                      {dashboardData?.details?.plan?.gang_sheet_limit -
                         dashboardData?.details?.remainingSheets}
                     </Text>
                   </Box>
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      {messages.REMAINING_SHEETS}
+                      {messages?.REMAINING_SHEETS}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.remainingSheets}
@@ -107,7 +107,7 @@ function DashBoard() {
 
                   <Box>
                     <Text as="h2" variant="headingMd">
-                      {messages.REMAINING_BG_REMOVER}
+                      {messages?.REMAINING_BG_REMOVER}
                     </Text>
                     <Text as="p">
                       {dashboardData?.details?.remainingBgRemover}
