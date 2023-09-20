@@ -75,10 +75,11 @@ function GalleryListing() {
   };
 
   //Modal Change
-  const handleChange = useCallback(
-    () => setIsCategoryModelShow(!isCategoryModelShow),
-    [isCategoryModelShow, setIsCategoryModelShow]
-  );
+  const handleChange = useCallback(() => {
+    setIsCategoryModelShow(!isCategoryModelShow);
+    setIsNewCategoryError(false);
+    setNewCategoryTitle("");
+  }, [isCategoryModelShow, setIsCategoryModelShow]);
 
   useEffect(() => {
     getCategoriesList();

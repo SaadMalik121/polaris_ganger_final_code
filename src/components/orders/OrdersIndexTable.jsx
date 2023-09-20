@@ -392,6 +392,8 @@ function OrdersIndexTable() {
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(orderData?.orders?.data);
 
+  console.log(orderData);
+
   let rowMarkup = orderData?.orders?.data?.map(
     (
       {

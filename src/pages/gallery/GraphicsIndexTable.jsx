@@ -172,7 +172,7 @@ function GraphicsIndexTable({
     plural: "graphics",
   };
 
-  const { selectedResources, allResourcesSelected, handleSelectionChange } =
+  let { selectedResources, allResourcesSelected, handleSelectionChange } =
     useIndexResourceState(
       selected === 1 ? categoryList?.data : galleryListingData?.data?.data
     );
@@ -359,6 +359,7 @@ function GraphicsIndexTable({
             hasNext={categoryList?.current_page < categoryList?.last_page}
             onNext={() => {
               getCategories(categoryList?.current_page + 1);
+              selectedResources = [];
             }}
           />
         </Box>
@@ -385,6 +386,7 @@ function GraphicsIndexTable({
             }
             onNext={() => {
               getGalleryListings(galleryListingData?.data?.current_page + 1);
+              selectedResources = [];
             }}
           />
         </Box>

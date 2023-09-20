@@ -39,6 +39,7 @@ function EditGraphic() {
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [tagInputError, setTagInputError] = useState();
+  const [isEditDisabled, setIsEditDisabled] = useState(true);
 
   const categoryOptions = categoriesList?.data.map((category) => {
     return { value: category?.id.toString(), label: category?.title };
@@ -82,6 +83,7 @@ function EditGraphic() {
 
   const handleTagInputChange = useCallback((value) => {
     setTagInput(value);
+    setIsEditDisabled(false);
   }, []);
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() !== "") {
@@ -96,17 +98,19 @@ function EditGraphic() {
       const updatedTags = tags.filter((tag, index) => index !== indexToRemove);
 
       setTags(updatedTags);
+      setIsEditDisabled(false);
     },
     [tags]
   );
   const handleSelectChangeCategory = useCallback((value) => {
     setSelectedCategory(value);
+    setIsEditDisabled(false);
   }, []);
 
-  const handleSelectChangeStatus = useCallback(
-    (value) => setSelectedStatus(value),
-    []
-  );
+  const handleSelectChangeStatus = useCallback((value) => {
+    setSelectedStatus(value);
+    setIsEditDisabled(false);
+  }, []);
 
   //Delete Modal Change
   const handleChange = useCallback(
@@ -311,7 +315,12 @@ function EditGraphic() {
               </Button>
             </Box>
             <Box style={{ marginBottom: "10px" }}>
-              <Button primary onClick={editGraphicData} loading={isEditLoading}>
+              <Button
+                primary
+                onClick={editGraphicData}
+                loading={isEditLoading}
+                disabled={isEditDisabled}
+              >
                 {messages.editGraphicBtn}
               </Button>
             </Box>
