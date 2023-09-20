@@ -1,54 +1,105 @@
 import {
+  Banner,
   Box,
   Button,
   Card,
   FormLayout,
+  Frame,
   HorizontalStack,
+  InlineError,
   Layout,
   Page,
   Select,
+  Spinner,
   Tag,
   Text,
   TextField,
+  Toast,
 } from "@shopify/polaris";
 import React, { useCallback, useEffect, useState } from "react";
 import Media from "./Media";
-import { useDispatch, useSelector } from "react-redux";
-import { addGraphic } from "../../store/GallerySlice";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useIntl } from "react-intl";
 
 function AddGraphic() {
+  const { messages } = useIntl();
   const navigate = useNavigate();
   const [files, setFiles] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState("Animals");
+  const [categoriesList, setCategoriesList] = useState();
+
+  const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const [isSaveError, setIsSaveError] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState();
   const [selectedStatus, setSelectedStatus] = useState("Active");
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
-  const dispatch = useDispatch();
-  const [categoriesList, setCategoriesList] = useState();
 
   const handleTagInputChange = useCallback((value) => {
     setTagInput(value);
   }, []);
 
   const getCategoriesList = useCallback(async (pageNum) => {
-    console.log("pageNum");
-    console.log(pageNum);
     const { data } = await axios.post(
       `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
     );
     setCategoriesList(data.data);
   }, []);
 
+  // State variables for error messages
+  const [categoryError, setCategoryError] = useState();
+  const [tagInputError, setTagInputError] = useState();
+  const [filesError, setFilesError] = useState();
+
+  // Validation function for category selection
+  const validateCategory = (value) => {
+    if (!value) {
+      setCategoryError(true);
+    } else {
+      setCategoryError(false);
+    }
+  };
+
+  // Validation function for tag input
+  const validateTagInput = () => {
+    if (tags.length === 0) {
+      setTagInputError(true);
+    } else {
+      setTagInputError(false);
+    }
+  };
+
+  // Validation function for files selection
+  const validateFiles = () => {
+    if (files?.length === 0) {
+      setFilesError(true);
+    } else {
+      setFilesError(false);
+    }
+  };
+
   useEffect(() => {
     getCategoriesList();
   }, [getCategoriesList]);
+
+  // After fetching categoriesList, set the initial selectedCategory
+  useEffect(() => {
+    if (categoriesList && categoriesList.data.length > 0) {
+      setSelectedCategory(categoriesList.data[0].id.toString());
+    }
+  }, [categoriesList]);
+
+  useEffect(() => {
+    if (files.length > 0) {
+      setFilesError(false);
+    }
+  }, [files]);
 
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() !== "") {
       setTags([...tags, tagInput.trim()]);
       setTagInput("");
+      setTagInputError(false);
     }
   }, [tags, tagInput]);
 
@@ -59,172 +110,204 @@ function AddGraphic() {
     },
     [tags]
   );
-  const handleSelectChangeCategory = useCallback(
-    (value) => setSelectedCategory(value),
-    []
-  );
+  const handleSelectChangeCategory = useCallback((value) => {
+    setSelectedCategory(value);
+    validateCategory(value);
+  }, []);
 
   const handleSelectChangeStatus = useCallback(
     (value) => setSelectedStatus(value),
     []
   );
 
-  function fileToBase64(file, callback) {
-    if (!file) {
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = function (event) {
-      const base64String = event.target.result;
-      callback(base64String);
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  function filesToBase64Array(files, callback) {
-    const base64Array = [];
-    let processedCount = 0;
-
-    files.forEach((file, index) => {
-      fileToBase64(file, (base64String) => {
-        base64Array[index] = base64String;
-        processedCount++;
-
-        // Check if all files have been processed
-        if (processedCount === files.length) {
-          callback(base64Array);
+  const saveGraphic = async () => {
+    try {
+      validateFiles();
+      validateTagInput();
+      if (filesError === false && tagInputError === false) {
+        setIsSaveLoading(true);
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+          formData.append("files[]", files[i]);
         }
-      });
-    });
-  }
-
-  const saveGraphic = () => {
-    filesToBase64Array(files, (base64Images) => {
-      dispatch(
-        addGraphic({
-          category: selectedCategory,
-          tags: tags,
-          status: selectedStatus,
-          image: base64Images,
-        })
-      );
-    });
-    navigate("/gallery-listing");
+        formData.append("tags", tags.toString());
+        formData.append("active", selectedStatus === "Active" ? true : false);
+        formData.append("category_id", parseInt(selectedCategory));
+        const { data } = await axios.post(
+          `https://gangr.uforiaprojects.com/api/local/saveGallery?shop=kamrandevstore.myshopify.com`,
+          formData
+        );
+        setIsSaveLoading(false);
+        navigate("/gallery-listing");
+      }
+    } catch (err) {
+      console.log(err);
+      setIsSaveLoading(false);
+      setIsSaveError(true);
+    }
   };
 
-  const categoryOptions = categoriesList?.data.map(
-    (category) => category?.title
-  );
+  const categoryOptions = categoriesList?.data.map((category) => {
+    return { value: category?.id.toString(), label: category?.title };
+  });
 
   const statusOptions = [
     { label: "Active", value: "Active" },
     { label: "InActive", value: "InActive" },
   ];
 
-  return (
-    <Box>
-      <Page
-        backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
-        title="Add a Graphic"
-      >
-        <Layout>
-          <Layout.AnnotatedSection
-            id="selectCategory"
-            title="Select a Category"
-            description="Choose a category from the dropdown menu where you would like to include a graphic."
+  return categoriesList ? (
+    <Frame>
+      <Box padding={"10"}>
+        {isSaveError && (
+          <Banner
+            title="Erorr while saving graphic"
+            status="critical"
+            onDismiss={() => {
+              setIsSaveError(false);
+            }}
           >
-            <Card sectioned>
-              <FormLayout>
-                <Select
-                  label="Select a Category"
-                  options={categoryOptions}
-                  onChange={handleSelectChangeCategory}
-                  value={selectedCategory}
-                />
-              </FormLayout>
-            </Card>
-          </Layout.AnnotatedSection>
-        </Layout>
+            <p>Unexpected error occour. Kindly try again</p>
+          </Banner>
+        )}
+        {isSaveError && (
+          <Toast
+            content="Error while saving graphic"
+            onDismiss={() => setIsSaveError(false)}
+          />
+        )}
 
-        <Box style={{ marginTop: "10px" }}>
-          <Card>
-            <Box style={{ marginBottom: "15px" }}>
-              <Text as="h4" fontWeight="bold">
-                Media
-              </Text>
-            </Box>
-            <Media files={files} setFiles={setFiles} />
-          </Card>
-        </Box>
-
-        <Box style={{ marginTop: "35px" }}>
+        <Page
+          backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
+          title={messages.addGraphicsTitle}
+        >
           <Layout>
             <Layout.AnnotatedSection
-              id="addTags"
-              title="Add Tags"
-              description="Assign descriptive tags to the images to facilitate effortless image retrieval for our customers."
+              id="selectCategory"
+              title={messages.selectCategoryLabel}
+              description={messages.selectCategoryDescription}
             >
               <Card sectioned>
                 <FormLayout>
-                  <TextField
-                    label="Add a Tag"
-                    value={tagInput}
-                    onChange={handleTagInputChange}
-                    placeholder="Enter a tag"
+                  <Select
+                    label={messages.selectCategoryLabel}
+                    options={categoryOptions}
+                    onChange={handleSelectChangeCategory}
+                    value={selectedCategory}
                   />
-                  <Button onClick={handleAddTag}>Add Tag</Button>
-                  {tags.length > 0 && (
-                    <Box>
-                      <HorizontalStack>
-                        {tags.map((tag, index) => (
-                          <Box style={{ marginRight: "10px" }} key={index}>
-                            <Tag onRemove={() => handleRemoveTag(index)}>
-                              {tag}
-                            </Tag>
-                          </Box>
-                        ))}
-                      </HorizontalStack>
-                    </Box>
+                  {categoryError && (
+                    <InlineError
+                      message="At least one media must be added"
+                      fieldID="myFieldID"
+                    />
                   )}
                 </FormLayout>
               </Card>
             </Layout.AnnotatedSection>
           </Layout>
-        </Box>
 
-        <Box style={{ marginTop: "35px" }}>
-          <Layout>
-            <Layout.AnnotatedSection
-              id="graphicsStatus"
-              title="Graphics Status"
-              description="Indicate whether you intend to Display this graphic to customers
-              or not."
-            >
-              <Card sectioned>
-                <FormLayout>
-                  <Select
-                    label="Status"
-                    options={statusOptions}
-                    onChange={handleSelectChangeStatus}
-                    value={selectedStatus}
-                  />
-                </FormLayout>
-              </Card>
-            </Layout.AnnotatedSection>
-          </Layout>
-        </Box>
-
-        <HorizontalStack align="end">
-          <Box style={{ marginBottom: "10px" }}>
-            <Button primary onClick={saveGraphic}>
-              Save
-            </Button>
+          <Box style={{ marginTop: "10px" }}>
+            <Card>
+              <Box style={{ marginBottom: "15px" }}>
+                <Text as="h4" fontWeight="bold">
+                  {messages.mediaLabel}
+                </Text>
+              </Box>
+              <Media files={files} setFiles={setFiles} />
+              {filesError && (
+                <InlineError
+                  message="At least one media must be added"
+                  fieldID="myFieldID"
+                />
+              )}
+            </Card>
           </Box>
-        </HorizontalStack>
-      </Page>
+
+          <Box style={{ marginTop: "35px" }}>
+            <Layout>
+              <Layout.AnnotatedSection
+                id="addTags"
+                title={messages.addTagsLabel}
+                description={messages.addTagsDescription}
+              >
+                <Card sectioned>
+                  <FormLayout>
+                    <div
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddTag();
+                        }
+                      }}
+                    >
+                      <TextField
+                        label={messages.addTagsLabel}
+                        value={tagInput}
+                        onChange={handleTagInputChange}
+                        placeholder={messages.addTagPlaceholder}
+                      />
+                    </div>
+                    <Button onClick={handleAddTag}>{messages.addTagBtn}</Button>
+                    {tags.length > 0 && (
+                      <Box>
+                        <HorizontalStack>
+                          {tags.map((tag, index) => (
+                            <Box
+                              style={{ marginRight: "10px", marginTop: "10px" }}
+                              key={index}
+                            >
+                              <Tag onRemove={() => handleRemoveTag(index)}>
+                                {tag}
+                              </Tag>
+                            </Box>
+                          ))}
+                        </HorizontalStack>
+                      </Box>
+                    )}
+                    {tagInputError && (
+                      <InlineError message="At least one tag must be provided" />
+                    )}
+                  </FormLayout>
+                </Card>
+              </Layout.AnnotatedSection>
+            </Layout>
+          </Box>
+
+          <Box style={{ marginTop: "35px" }}>
+            <Layout>
+              <Layout.AnnotatedSection
+                id="graphicsStatus"
+                title={messages.graphicsStatusLabel}
+                description={messages.graphicsStatusDescription}
+              >
+                <Card sectioned>
+                  <FormLayout>
+                    <Select
+                      label={messages.statusSelectLabel}
+                      options={statusOptions}
+                      onChange={handleSelectChangeStatus}
+                      value={selectedStatus}
+                    />
+                  </FormLayout>
+                </Card>
+              </Layout.AnnotatedSection>
+            </Layout>
+          </Box>
+
+          <HorizontalStack align="end">
+            <Box style={{ marginBottom: "10px" }}>
+              <Button primary onClick={saveGraphic} loading={isSaveLoading}>
+                {messages.saveBtn}
+              </Button>
+            </Box>
+          </HorizontalStack>
+        </Page>
+      </Box>
+    </Frame>
+  ) : (
+    <Box padding={10}>
+      <HorizontalStack align="center">
+        <Spinner />
+      </HorizontalStack>
     </Box>
   );
 }

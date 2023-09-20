@@ -1,153 +1,141 @@
 import {
+  Banner,
   Box,
   Button,
   Card,
   FormLayout,
+  Frame,
   HorizontalStack,
+  InlineError,
   Layout,
+  Modal,
   Page,
   Select,
   Spinner,
   Tag,
   Text,
   TextField,
-  VerticalStack,
+  Thumbnail,
+  Toast,
 } from "@shopify/polaris";
 import React, { useCallback, useEffect, useState } from "react";
-import Media from "./Media";
-import { useDispatch, useSelector } from "react-redux";
-import { editGraphic } from "../../store/GallerySlice";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
+import { useIntl } from "react-intl";
 
 function EditGraphic() {
+  const params = useParams();
+  const [isSaveError, setIsSaveError] = useState(false);
+  const [isShowDeleteModal, setIsShowDeleteModal] = useState(false);
   const [categoriesList, setCategoriesList] = useState();
+  const [selectedGallery, setSelectedGallery] = useState();
+  const { messages } = useIntl();
+  const [selectedCategory, setSelectedCategory] = useState();
+  const [isEditLoading, setIsEditLoading] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState();
+  const [isDeleteError, setIsDeleteError] = useState(false);
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
+  const [file, setFile] = useState();
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tagInputError, setTagInputError] = useState();
+
+  const categoryOptions = categoriesList?.data.map((category) => {
+    return { value: category?.id.toString(), label: category?.title };
+  });
+
+  const getSelecetedGraphicDetail = useCallback(async () => {
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/getGallery/${parseInt(
+        params.id
+      )}?shop=kamrandevstore.myshopify.com`
+    );
+    setSelectedGallery(data?.data);
+
+    setSelectedCategory(data?.data.category_id.toString());
+    setTags(data?.data?.tags?.split(","));
+    setFile(data?.data?.file);
+    setSelectedStatus(data?.data?.active === 0 ? "InActive" : "Active");
+  }, [params.id]);
 
   const getCategoriesList = useCallback(async (pageNum) => {
-    console.log("pageNum");
-    console.log(pageNum);
     const { data } = await axios.post(
       `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
     );
     setCategoriesList(data.data);
   }, []);
 
-  const categoryOptions = categoriesList?.data.map(
-    (category) => category?.title
-  );
+  // Validation function for tag input
+  const validateTagInput = () => {
+    if (tags.length === 0) {
+      setTagInputError(true);
+    } else {
+      setTagInputError(false);
+    }
+  };
 
   useEffect(() => {
     getCategoriesList();
-  }, [getCategoriesList]);
+    getSelecetedGraphicDetail();
+  }, [getCategoriesList, getSelecetedGraphicDetail]);
   const navigate = useNavigate();
-
-  const [tagInput, setTagInput] = useState("");
-  const dispatch = useDispatch();
-  const params = useParams();
-  const galleryList = useSelector((state) => state.gallery.gallery);
-
-  // Data of Gallery which is selected for edit
-  const selectedGalleryData = galleryList.find(
-    (gallery) => gallery.id === parseInt(params.id)
-  );
-
-  const [selectedGallery, setSelectedGallery] = useState(selectedGalleryData);
-
-  const [files, setFiles] = useState([]);
-  const [myImages] = useState([selectedGallery.image]);
-
-  useEffect(() => {
-    function dataURLtoFile(dataurl, filename) {
-      var arr = dataurl.split(","),
-        mime = arr[0].match(/:(.*?);/)[1],
-        bstr = atob(arr[arr.length - 1]),
-        n = bstr.length,
-        u8arr = new Uint8Array(n);
-      while (n--) {
-        u8arr[n] = bstr.charCodeAt(n);
-      }
-      return new File([u8arr], filename, { type: mime });
-    }
-
-    const convertedFiles = myImages.map((image, index) => {
-      const blob = dataURLtoFile(image, "image/png");
-      const fileName = `image_${index}.png`; // Provide a unique file name
-      return new File([blob], fileName, { type: "image/png" });
-    });
-
-    setFiles(convertedFiles);
-  }, [selectedGallery, myImages]);
 
   const handleTagInputChange = useCallback((value) => {
     setTagInput(value);
   }, []);
-
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() !== "") {
-      setSelectedGallery({
-        ...selectedGallery,
-        tags: [...selectedGallery.tags, tagInput.trim()],
-      });
+      setTags([...tags, tagInput.trim()]);
       setTagInput("");
+      setTagInputError(false);
     }
-  }, [tagInput, selectedGallery]);
+  }, [tags, tagInput]);
 
   const handleRemoveTag = useCallback(
     (indexToRemove) => {
-      const updatedTags = selectedGallery.tags.filter(
-        (tag, index) => index !== indexToRemove
-      );
-      setSelectedGallery({ ...selectedGallery, tags: updatedTags });
+      const updatedTags = tags.filter((tag, index) => index !== indexToRemove);
+
+      setTags(updatedTags);
     },
-    [selectedGallery]
+    [tags]
   );
-  const handleSelectChangeCategory = useCallback(
-    (value) => setSelectedGallery({ ...selectedGallery, category: value }),
-    []
-  );
+  const handleSelectChangeCategory = useCallback((value) => {
+    setSelectedCategory(value);
+  }, []);
 
   const handleSelectChangeStatus = useCallback(
-    (value) => setSelectedGallery({ ...selectedGallery, status: value }),
+    (value) => setSelectedStatus(value),
     []
   );
 
-  function fileToBase64(file, callback) {
-    if (!file) {
-      return;
-    }
+  //Delete Modal Change
+  const handleChange = useCallback(
+    () => setIsShowDeleteModal(!isShowDeleteModal),
+    [isShowDeleteModal, setIsShowDeleteModal]
+  );
+  const editGraphicData = async () => {
+    try {
+      validateTagInput();
+      if (tagInputError === false) {
+        setIsEditLoading(true);
+        const formData = new FormData();
+        formData.append("files[]", file);
+        formData.append("tags", tags.toString());
+        formData.append("active", selectedStatus === "Active" ? 1 : 0);
+        formData.append("category_id", parseInt(selectedCategory));
+        formData.append("id", parseInt(params.id));
+        const { data } = await axios.post(
+          `https://gangr.uforiaprojects.com/api/local/saveGallery?shop=kamrandevstore.myshopify.com`,
+          formData
+        );
 
-    const reader = new FileReader();
-
-    reader.onload = function (event) {
-      const base64String = event.target.result;
-      callback(base64String);
-    };
-
-    reader.readAsDataURL(file);
-  }
-  const editGraphicData = () => {
-    const base64Images = []; // Initialize an empty array to store base64 strings
-
-    // Loop through each file in the files array
-    for (const file of files) {
-      fileToBase64(file, (base64Image) => {
-        base64Images.push(base64Image);
-
-        if (base64Images.length === files.length) {
-          dispatch(
-            editGraphic({
-              category: selectedGallery.category,
-              tags: selectedGallery.tags,
-              status: selectedGallery.status,
-              image: base64Images, // Use the array of base64 images here
-              id: selectedGallery.id,
-            })
-          );
-
-          // Navigate after all files have been processed
-          navigate("/gallery-listing");
-        }
-      });
+        setIsEditLoading(false);
+        navigate("/gallery-listing");
+      }
+    } catch (err) {
+      console.log(err);
+      setIsEditLoading(false);
+      setIsSaveError(true);
     }
   };
 
@@ -156,26 +144,80 @@ function EditGraphic() {
     { label: "InActive", value: "InActive" },
   ];
 
-  return categoriesList ? (
-    <>
+  return categoriesList && selectedGallery ? (
+    <Frame>
+      {isSaveError && (
+        <Banner
+          title="Erorr while saving graphic"
+          status="critical"
+          onDismiss={() => {
+            setIsSaveError(false);
+          }}
+        >
+          <p>Unexpected error occour. Kindly try again</p>
+        </Banner>
+      )}
+      {isSaveError && (
+        <Toast
+          content="Error while updating data"
+          duration={2000}
+          onDismiss={() => setIsSaveError(false)}
+        />
+      )}
+
+      {isDeleteError && (
+        <Toast
+          content="Error while deleting graphic"
+          duration={2000}
+          onDismiss={() => setIsDeleteError(false)}
+        />
+      )}
+      {isShowDeleteModal && (
+        <Modal
+          open={isShowDeleteModal}
+          onClose={handleChange}
+          title={messages.deleteGraphicTitle}
+          primaryAction={{
+            content: messages.deleteGraphicTitle,
+            loading: isLoadingDelete,
+            onAction: async () => {
+              try {
+                setIsLoadingDelete(true);
+                await axios.post(
+                  `https://gangr.uforiaprojects.com/api/local/deleteGallery/${params.id}?shop=kamrandevstore.myshopify.com`
+                );
+                navigate("/gallery-listing");
+                setIsLoadingDelete(false);
+              } catch (error) {
+                setIsDeleteError(true);
+                setIsLoadingDelete(false);
+              }
+            },
+          }}
+        >
+          <Modal.Section>
+            <Text>{messages.deleteGraphicDescription}</Text>
+          </Modal.Section>
+        </Modal>
+      )}
       <Box>
         <Page
           backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
-          title="Edit a Graphic"
+          title={messages.editGraphicTitle}
         >
           <Layout>
             <Layout.AnnotatedSection
               id="selectCategory"
-              title="Select a Category"
-              description="Choose a category from the dropdown menu where you would like to include a graphic."
+              title={messages.selectCategoryLabel}
+              description={messages.selectCategoryDescription}
             >
               <Card sectioned>
                 <FormLayout>
                   <Select
-                    label="Select a Category"
+                    label={messages.selectCategoryLabel}
                     options={categoryOptions}
                     onChange={handleSelectChangeCategory}
-                    value={selectedGallery.category}
+                    value={selectedCategory}
                   />
                 </FormLayout>
               </Card>
@@ -186,10 +228,11 @@ function EditGraphic() {
             <Card>
               <Box style={{ marginBottom: "15px" }}>
                 <Text as="h4" fontWeight="bold">
-                  Media
+                  {messages.mediaLabel}
                 </Text>
               </Box>
-              <Media files={files} setFiles={setFiles} isDisabled={true} />
+              {/* <Media files={files} setFiles={setFiles} isDisabled={true} /> */}
+              <Thumbnail source={file} size="large" style={{ width: "100%" }} />
             </Card>
           </Box>
 
@@ -197,22 +240,31 @@ function EditGraphic() {
             <Layout>
               <Layout.AnnotatedSection
                 id="addTags"
-                title="Add Tags"
-                description="Assign descriptive tags to the images to facilitate effortless image retrieval for our customers."
+                title={messages.addTagsLabel}
+                description={messages.addTagsDescription}
               >
                 <Card sectioned>
                   <FormLayout>
-                    <TextField
-                      label="Add a Tag"
-                      value={tagInput}
-                      onChange={handleTagInputChange}
-                      placeholder="Enter a tag"
-                    />
-                    <Button onClick={handleAddTag}>Add Tag</Button>
-                    {selectedGallery.tags.length > 0 && (
+                    <div
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddTag();
+                        }
+                      }}
+                    >
+                      <TextField
+                        label={messages.addTagsLabel}
+                        value={tagInput}
+                        onChange={handleTagInputChange}
+                        placeholder={messages.addTagPlaceholder}
+                      />
+                    </div>
+                    <Button onClick={handleAddTag}>{messages.addTagBtn}</Button>
+
+                    {tags?.length > 0 && (
                       <Box>
                         <HorizontalStack>
-                          {selectedGallery.tags.map((tag, index) => (
+                          {tags?.map((tag, index) => (
                             <Box style={{ marginRight: "10px" }} key={index}>
                               <Tag onRemove={() => handleRemoveTag(index)}>
                                 {tag}
@@ -221,6 +273,9 @@ function EditGraphic() {
                           ))}
                         </HorizontalStack>
                       </Box>
+                    )}
+                    {tagInputError && (
+                      <InlineError message="At least one tag must be provided" />
                     )}
                   </FormLayout>
                 </Card>
@@ -232,17 +287,16 @@ function EditGraphic() {
             <Layout>
               <Layout.AnnotatedSection
                 id="graphicsStatus"
-                title="Graphics Status"
-                description="Indicate whether you intend to Display this graphic to customers
-                or not."
+                title={messages.graphicsStatusLabel}
+                description={messages.graphicsStatusDescription}
               >
                 <Card sectioned>
                   <FormLayout>
                     <Select
-                      label="Status"
+                      label={messages.statusSelectLabel}
                       options={statusOptions}
                       onChange={handleSelectChangeStatus}
-                      value={selectedGallery.status}
+                      value={selectedStatus}
                     />
                   </FormLayout>
                 </Card>
@@ -251,17 +305,22 @@ function EditGraphic() {
           </Box>
 
           <HorizontalStack align="end">
+            <Box style={{ marginBottom: "10px", marginRight: "10px" }}>
+              <Button outline onClick={() => setIsShowDeleteModal(true)}>
+                {messages.deleteGraphicBtn}
+              </Button>
+            </Box>
             <Box style={{ marginBottom: "10px" }}>
-              <Button primary onClick={editGraphicData}>
-                Edit Graphic
+              <Button primary onClick={editGraphicData} loading={isEditLoading}>
+                {messages.editGraphicBtn}
               </Button>
             </Box>
           </HorizontalStack>
         </Page>
       </Box>
-    </>
+    </Frame>
   ) : (
-    <Box Box padding={10}>
+    <Box padding={10}>
       <HorizontalStack align="center">
         <Spinner />
       </HorizontalStack>

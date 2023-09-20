@@ -4,7 +4,6 @@ import {
   InlineError,
   Modal,
   Page,
-  Pagination,
   Select,
   TextField,
   Toast,
@@ -13,9 +12,19 @@ import React, { useCallback, useEffect, useState } from "react";
 import GraphicsIndexTable from "./GraphicsIndexTable";
 
 import axios from "axios";
-import OrdersIndexTable from "../../components/orders/OrdersIndexTable";
+import { useIntl } from "react-intl";
 
 function GalleryListing() {
+  const getCategoriesList = useCallback(async (pageNum) => {
+    setIsLoadingCategories(true);
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
+    );
+    setCategoriesList(data.data);
+    setIsLoadingCategories(false);
+  }, []);
+  const { messages } = useIntl();
+
   const [selectedActiveStatus, setSelectedActiveStatus] = useState(true);
   const [isCategoryModelShow, setIsCategoryModelShow] = useState(false);
   const [newCategoryTitle, setNewCategoryTitle] = useState();
@@ -23,6 +32,8 @@ function GalleryListing() {
   const [isSuccessCategoryAdded, setIsSuccessCategoryAdded] = useState(false);
   const [categoriesList, setCategoriesList] = useState();
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [isLoadingDuringSave, setIsLoadingDuringSave] = useState(false); //while saving categories
+  const [isSaveCategoryError, setIsSaveCategoryError] = useState(false);
 
   const handleStatusChange = useCallback(
     (value) => {
@@ -37,21 +48,29 @@ function GalleryListing() {
   ];
 
   const handleSaveCategory = async () => {
-    const { data } = await axios.post(
-      "https://gangr.uforiaprojects.com/api/local/saveCategory?shop=kamrandevstore.myshopify.com",
-      {
-        active: selectedActiveStatus,
-        title: newCategoryTitle,
-        id: null,
-      }
-    );
+    try {
+      setIsLoadingDuringSave(true);
+      const { data } = await axios.post(
+        "https://gangr.uforiaprojects.com/api/local/saveCategory?shop=kamrandevstore.myshopify.com",
+        {
+          active: selectedActiveStatus,
+          title: newCategoryTitle,
+          id: null,
+        }
+      );
 
-    setIsNewCategoryError(false);
-    setIsSuccessCategoryAdded(true);
-    setIsCategoryModelShow(false);
-    setNewCategoryTitle("");
-    if (data) {
-      getCategoriesList();
+      setIsNewCategoryError(false);
+      setIsSuccessCategoryAdded(true);
+      setIsCategoryModelShow(false);
+      setNewCategoryTitle("");
+      setIsLoadingDuringSave(false);
+
+      if (data) {
+        getCategoriesList();
+      }
+    } catch (error) {
+      setIsLoadingDuringSave(false);
+      setIsSaveCategoryError(true);
     }
   };
 
@@ -61,15 +80,6 @@ function GalleryListing() {
     [isCategoryModelShow, setIsCategoryModelShow]
   );
 
-  const getCategoriesList = useCallback(async (pageNum) => {
-    setIsLoadingCategories(true);
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
-    );
-    setCategoriesList(data.data);
-    setIsLoadingCategories(false);
-  }, []);
-
   useEffect(() => {
     getCategoriesList();
   }, [getCategoriesList]);
@@ -78,15 +88,15 @@ function GalleryListing() {
     <Box padding={5}>
       <Frame>
         <Page
-          title="Graphics"
-          subtitle="Upload your Graphics so that your customers can see them."
+          title={messages.graphicListingPageTitle}
+          subtitle={messages.graphicListingPageSubtitle}
           primaryAction={{
-            content: "Add Graphics",
+            content: messages.addGraphicButton,
             url: "/add-graphic",
           }}
           secondaryActions={[
             {
-              content: "Add Graphics Category",
+              content: messages.addGraphicCategoryButton,
               onAction: () => {
                 setIsCategoryModelShow(true);
               },
@@ -96,17 +106,20 @@ function GalleryListing() {
         >
           <GraphicsIndexTable
             categoryList={categoriesList}
+            setCategoriesList={setCategoriesList}
             getCategories={getCategoriesList}
             isLoadingCategories={isLoadingCategories}
+            messages={messages}
           />
 
           {isCategoryModelShow && (
             <Modal
               open={isCategoryModelShow}
               onClose={handleChange}
-              title={"Add Category"}
+              title={messages.addCategoryModalTitle}
               primaryAction={{
-                content: "Add Category",
+                content: messages.addCategoryModalTitle,
+                loading: isLoadingDuringSave,
                 onAction: () => {
                   if (newCategoryTitle) {
                     handleSaveCategory();
@@ -118,12 +131,12 @@ function GalleryListing() {
             >
               <Modal.Section>
                 <TextField
-                  placeholder="Enter Category Name"
+                  placeholder={messages.categoryNamePlaceholder}
                   value={newCategoryTitle}
                   onChange={(e) => setNewCategoryTitle(e)}
                 />
                 {isNewCategoryError && (
-                  <InlineError message={"Category field can not be empty"} />
+                  <InlineError message={messages.categoryNameError} />
                 )}
 
                 <Box style={{ marginTop: "20px" }}>
@@ -139,7 +152,14 @@ function GalleryListing() {
 
           {isSuccessCategoryAdded && (
             <Toast
-              content="Category Added Successful"
+              content={messages.successCategoryAddedToast}
+              duration={2000}
+              onDismiss={() => setIsSuccessCategoryAdded(false)}
+            />
+          )}
+          {isSaveCategoryError && (
+            <Toast
+              content={messages.successCategoryErrorToast}
               duration={2000}
               onDismiss={() => setIsSuccessCategoryAdded(false)}
             />

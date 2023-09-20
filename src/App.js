@@ -22,19 +22,19 @@ function App() {
 
   return (
     <IntlProvider
+      locale="en"
       messages={
         selectedLanguage === "French" ? messagesInFrench : messagesInEnglish
       }
     >
       <Navigation />
       <Box padding={2} style={{ width: "10%" }}>
-        {/* <Select
+        <Select
           // label="Choose Language"
           options={LanguageOptions}
           onChange={handleSelectChange}
           value={selectedLanguage}
-        /> */}
-
+        />
       </Box>
       <MyRouter />
     </IntlProvider>

@@ -1,13 +1,9 @@
 import {
   TextField,
   IndexTable,
-  LegacyCard,
   IndexFilters,
   useSetIndexFiltersMode,
   useIndexResourceState,
-  // Text,
-  // ChoiceList,
-  // RangeSlider,
   Badge,
   Thumbnail,
   Spinner,
@@ -16,25 +12,19 @@ import {
   InlineError,
   Toast,
   Pagination,
-  Card,
   Modal,
   Select,
 } from "@shopify/polaris";
-//   import type {IndexFiltersProps, TabProps} from '@shopify/polaris';
 import React, { useState, useCallback, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import AppModal from "../../components/AppModal";
-import { editCategoryValue } from "../../store/GallerySlice";
 import axios from "axios";
 
 function GraphicsIndexTable({
   categoryList,
   getCategories,
   isLoadingCategories,
+  setCategoriesList,
 }) {
-  const [graphicList, setGraphicList] = useState([]);
-  const dispatch = useDispatch();
   const [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay] =
     useState(false);
   const [editCategory, setEditCategory] = useState();
@@ -42,13 +32,12 @@ function GraphicsIndexTable({
   const [isEditCategoryError, setIsEditCategoryError] = useState(false); //if submit form with empty category
   const [isSuccessCategoryEdited, setIsSuccessCategoryEdited] = useState(false);
   const [isGraphicLoaded, setIsGraphicLoaded] = useState(false);
-  const galleryFromStore = useSelector((state) => state.gallery.gallery);
+  const [galleryListingData, setGalleryListingData] = useState();
+
   const [isLoading, setIsLoading] = useState(false);
   const [queryValue, setQueryValue] = useState("");
   const navigation = useNavigate();
-  const [selectedActiveStatus, setSelectedActiveStatus] = useState(
-    selectedCategoryValue?.active ? true : false
-  );
+  const [selectedActiveStatus, setSelectedActiveStatus] = useState();
 
   //Modal
   const handleChange = useCallback(
@@ -89,43 +78,31 @@ function GraphicsIndexTable({
     selectedCategoryValue,
     getCategories,
   ]);
+  async function getGalleryListings(pageNumber) {
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com&page=${pageNumber}`
+    );
+    setGalleryListingData(data);
+    setIsGraphicLoaded(true);
+  }
+
+  const getCategoriesListing = async () => {
+    const { data } = await axios.post(
+      "https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com"
+    );
+    setCategoriesList(data?.data);
+  };
 
   useEffect(() => {
-    // Filter the galleryFromStore based on the queryValue
-    let filteredGalleryList = [...galleryFromStore];
-    if (queryValue.trim() !== "" && queryValue.length >= 3) {
-      setIsLoading(true);
-
-      filteredGalleryList = galleryFromStore.filter((product) => {
-        const lowerQuery = queryValue.toLowerCase();
-        const lowerCategory = product.category.toLowerCase();
-
-        return (
-          lowerCategory.includes(lowerQuery) ||
-          product.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))
-        );
-      });
+    if (selected !== 1) {
+      getGalleryListings();
     }
+    if (selected === 1) {
+      getCategoriesListing();
+    }
+  }, [queryValue]);
 
-    setGraphicList(filteredGalleryList);
-    setIsGraphicLoaded(true);
-  }, [galleryFromStore, queryValue, categoryList]);
-
-  // const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const [itemStrings] = useState(["All", "Categories", "Graphics"]);
-  // const deleteView = (index) => {
-  //   const newItemStrings = [...itemStrings];
-  //   newItemStrings.splice(index, 1);
-  //   setItemStrings(newItemStrings);
-  //   setSelected(0);
-  // };
-
-  // const duplicateView = async (name) => {
-  //   setItemStrings([...itemStrings, name]);
-  //   setSelected(itemStrings.length);
-  //   await sleep(1);
-  //   return true;
-  // };
 
   const tabs = itemStrings.map((item, index) => ({
     content: item,
@@ -133,160 +110,62 @@ function GraphicsIndexTable({
     onAction: () => {},
     id: `${item}-${index}`,
     isLocked: index === 0,
-    // actions:
-    //   index === 0
-    //     ? []
-    //     : [
-    //         {
-    //           type: "rename",
-    //           onAction: () => {},
-    //           onPrimaryAction: async (value) => {
-    //             const newItemsStrings = tabs.map((item, idx) => {
-    //               if (idx === index) {
-    //                 return value;
-    //               }
-    //               return item.content;
-    //             });
-    //             await sleep(1);
-    //             setItemStrings(newItemsStrings);
-    //             return true;
-    //           },
-    //         },
-    //         {
-    //           type: "duplicate",
-    //           onPrimaryAction: async (value) => {
-    //             await sleep(1);
-    //             duplicateView(value);
-    //             return true;
-    //           },
-    //         },
-    //         {
-    //           type: "edit",
-    //         },
-    //         {
-    //           type: "delete",
-    //           onPrimaryAction: async () => {
-    //             await sleep(1);
-    //             deleteView(index);
-    //             return true;
-    //           },
-    //         },
-    //       ],
   }));
   const [selected, setSelected] = useState(0);
-  // const onCreateNewView = async (value) => {
-  //   await sleep(500);
-  //   setItemStrings([...itemStrings, value]);
-  //   setSelected(itemStrings.length);
-  //   return true;
-  // };
-  const sortOptions = [
-    { label: "Order", value: "order asc", directionLabel: "Ascending" },
-    { label: "Order", value: "order desc", directionLabel: "Descending" },
-    { label: "Customer", value: "customer asc", directionLabel: "A-Z" },
-    { label: "Customer", value: "customer desc", directionLabel: "Z-A" },
-    { label: "Date", value: "date asc", directionLabel: "A-Z" },
-    { label: "Date", value: "date desc", directionLabel: "Z-A" },
-    { label: "Total", value: "total asc", directionLabel: "Ascending" },
-    { label: "Total", value: "total desc", directionLabel: "Descending" },
-  ];
-  const [sortSelected, setSortSelected] = useState(["order asc"]);
+
   const { mode, setMode } = useSetIndexFiltersMode();
-  const onHandleCancel = () => {};
+  const onHandleCancel = () => {
+    setQueryValue("");
+  };
 
-  // const onHandleSave = async () => {
-  //   await sleep(1);
-  //   return true;
-  // };
+  const handleFiltersQueryChange = useCallback(
+    async (value) => {
+      setQueryValue(value);
+      if (value.length >= 3 && selected !== 1) {
+        setIsLoading(true);
 
-  // const primaryAction =
-  //   selected === 0
-  //     ? {
-  //         type: "save-as",
-  //         onAction: onCreateNewView,
-  //         disabled: false,
-  //         loading: false,
-  //       }
-  //     : {
-  //         type: "save",
-  //         onAction: onHandleSave,
-  //         disabled: false,
-  //         loading: false,
-  //       };
-  const [accountStatus, setAccountStatus] = useState();
-  const [moneySpent, setMoneySpent] = useState();
-  const [taggedWith, setTaggedWith] = useState("");
+        const { data: tagsSearch } = await axios.post(
+          "https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com",
+          {
+            tags: value,
+          }
+        );
+        const { data: titleSearch } = await axios.post(
+          "https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com",
+          {
+            title: value,
+          }
+        );
 
-  // const handleAccountStatusChange = useCallback(
-  //   (value) => setAccountStatus(value),
-  //   []
-  // );
-  // const handleMoneySpentChange = useCallback(
-  //   (value) => setMoneySpent(value),
-  //   []
-  // );
-  // const handleTaggedWithChange = useCallback(
-  //   (value) => setTaggedWith(value),
-  //   []
-  // );
-  const handleFiltersQueryChange = useCallback((value) => {
-    setQueryValue(value);
-    if (value.length >= 3) {
-      setIsLoading(true);
-      setTimeout(() => {
+        setGalleryListingData(
+          tagsSearch?.data?.data?.length > 0 ? tagsSearch : titleSearch
+        );
         setIsLoading(false);
-      }, 300);
-    }
-  }, []);
-  const handleAccountStatusRemove = useCallback(
-    () => setAccountStatus(undefined),
-    []
+      } else if (value.length >= 3 && selected === 1) {
+        setIsLoading(true);
+
+        const { data } = await axios.post(
+          "https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com",
+          {
+            title: value,
+          }
+        );
+
+        setCategoriesList(data?.data);
+        if (data) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [selected, setCategoriesList]
   );
-  const handleMoneySpentRemove = useCallback(
-    () => setMoneySpent(undefined),
-    []
-  );
-  const handleTaggedWithRemove = useCallback(() => setTaggedWith(""), []);
+
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
   const handleFiltersClearAll = useCallback(() => {
-    handleAccountStatusRemove();
-    handleMoneySpentRemove();
-    handleTaggedWithRemove();
     handleQueryValueRemove();
-  }, [
-    handleAccountStatusRemove,
-    handleMoneySpentRemove,
-    handleQueryValueRemove,
-    handleTaggedWithRemove,
-  ]);
+  }, [handleQueryValueRemove]);
 
   const filters = [];
-
-  const appliedFilters = [];
-  if (accountStatus && !isEmpty(accountStatus)) {
-    const key = "accountStatus";
-    appliedFilters.push({
-      key,
-      label: disambiguateLabel(key, accountStatus),
-      onRemove: handleAccountStatusRemove,
-    });
-  }
-  if (moneySpent) {
-    const key = "moneySpent";
-    appliedFilters.push({
-      key,
-      label: disambiguateLabel(key, moneySpent),
-      onRemove: handleMoneySpentRemove,
-    });
-  }
-  if (!isEmpty(taggedWith)) {
-    const key = "taggedWith";
-    appliedFilters.push({
-      key,
-      label: disambiguateLabel(key, taggedWith),
-      onRemove: handleTaggedWithRemove,
-    });
-  }
 
   const resourceName = {
     singular: "graphic",
@@ -294,15 +173,17 @@ function GraphicsIndexTable({
   };
 
   const { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(graphicList);
+    useIndexResourceState(
+      selected === 1 ? categoryList?.data : galleryListingData?.data?.data
+    );
 
   const isSelectedTabNotCategory = selected !== 1;
   let rowMarkup;
   // Render rows conditionally based on the selected tab
   // Check if the selected tab is not 1 (i.e., not "Category")
   if (isSelectedTabNotCategory) {
-    rowMarkup = graphicList.map(
-      ({ image, category, status, tags, id }, indexOuter) => (
+    rowMarkup = galleryListingData?.data?.data?.map(
+      ({ file, category, active, tags, id }, indexOuter) => (
         <IndexTable.Row
           id={id}
           key={id}
@@ -310,20 +191,13 @@ function GraphicsIndexTable({
           onClick={() => navigation(`/edit-graphic/${id}`)}
         >
           <IndexTable.Cell>
-            <Thumbnail source={image} size="small" />
+            <Thumbnail source={file} size="small" />
           </IndexTable.Cell>
-          <IndexTable.Cell>{category}</IndexTable.Cell>
+          <IndexTable.Cell>{category?.title}</IndexTable.Cell>
+          <IndexTable.Cell>{tags}</IndexTable.Cell>
           <IndexTable.Cell>
-            {tags.map((tag, index) => (
-              <React.Fragment key={tag}>
-                {tag}
-                {tags[index + 1] && ","}
-              </React.Fragment>
-            ))}
-          </IndexTable.Cell>
-          <IndexTable.Cell>
-            <Badge status={status === "InActive" ? "critical" : "success"}>
-              {status}
+            <Badge status={!active ? "critical" : "success"}>
+              {active ? "Active" : "Inactive"}
             </Badge>
           </IndexTable.Cell>
         </IndexTable.Row>
@@ -340,26 +214,28 @@ function GraphicsIndexTable({
           setIsEditCategoryModelDisplay(true);
           setEditCategory(data?.title);
           setSelectedCategoryValue(data);
+          setSelectedActiveStatus(data?.active ? true : false);
         }}
       >
         <IndexTable.Cell></IndexTable.Cell>
         <IndexTable.Cell>{data?.title}</IndexTable.Cell>
-        <IndexTable.Cell>-</IndexTable.Cell>
-        <IndexTable.Cell>-</IndexTable.Cell>
+        <IndexTable.Cell>
+          <Badge status={data?.active === 0 ? "critical" : "success"}>
+            {data?.active === 0 ? "InActive" : "Active"}
+          </Badge>
+        </IndexTable.Cell>
       </IndexTable.Row>
     ));
   }
   return (
     <>
       <IndexFilters
-        sortOptions={sortOptions}
-        sortSelected={sortSelected}
         queryValue={queryValue}
         queryPlaceholder="Searching in all"
         onQueryChange={handleFiltersQueryChange}
-        onQueryClear={() => {}}
-        onSort={setSortSelected}
-        // primaryAction={primaryAction}
+        onQueryClear={() => {
+          setQueryValue("");
+        }}
         cancelAction={{
           onAction: onHandleCancel,
           disabled: false,
@@ -369,14 +245,13 @@ function GraphicsIndexTable({
         selected={selected}
         onSelect={setSelected}
         canCreateNewView={false}
-        // onCreateNewView={onCreateNewView}
         filters={filters}
-        // appliedFilters={appliedFilters}
         onClearAll={handleFiltersClearAll}
         mode={mode}
         setMode={setMode}
       />
-      {!isGraphicLoaded ? (
+      {(selected !== 1 && !isGraphicLoaded) ||
+      (selected === 1 && isLoadingCategories) ? (
         <Box
           style={{
             display: "flex",
@@ -387,21 +262,29 @@ function GraphicsIndexTable({
         >
           <Spinner />
         </Box>
-      ) : !isLoadingCategories && //when category is loading
+      ) : galleryListingData && //when category is loading
         !isLoading ? ( //when typing more than 3 words (loader display)
         <IndexTable
           resourceName={resourceName}
-          itemCount={graphicList.length}
+          itemCount={
+            selected !== 1
+              ? galleryListingData?.data?.data?.length || 0
+              : categoryList?.data?.length || 0
+          }
           selectedItemsCount={
             allResourcesSelected ? "All" : selectedResources.length
           }
           onSelectionChange={handleSelectionChange}
-          headings={[
-            { title: "" },
-            { title: "Category" },
-            { title: "Tags" },
-            { title: "Status" },
-          ]}
+          headings={
+            selected !== 1
+              ? [
+                  { title: "" },
+                  { title: "Category" },
+                  { title: "Tags" },
+                  { title: "Status" },
+                ]
+              : [{ title: "" }, { title: "Category" }, { title: "Status" }]
+          }
         >
           {rowMarkup}
         </IndexTable>
@@ -458,7 +341,7 @@ function GraphicsIndexTable({
           onDismiss={() => setIsSuccessCategoryEdited(false)}
         />
       )}
-      {/* Pagination */}
+      {/* Pagination for category tab */}
       {selected === 1 && categoryList?.last_page > 1 && (
         <Box
           style={{
@@ -480,29 +363,34 @@ function GraphicsIndexTable({
           />
         </Box>
       )}
+
+      {/* Pagination for all/graphic  tab */}
+      {selected !== 1 && galleryListingData?.data?.last_page > 1 && (
+        <Box
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            marginTop: "30px",
+          }}
+        >
+          <Pagination
+            hasPrevious={galleryListingData?.data?.current_page > 1}
+            onPrevious={() => {
+              getGalleryListings(galleryListingData?.data?.current_page - 1);
+            }}
+            hasNext={
+              galleryListingData?.data?.current_page <
+              galleryListingData?.data?.last_page
+            }
+            onNext={() => {
+              getGalleryListings(galleryListingData?.data?.current_page + 1);
+            }}
+          />
+        </Box>
+      )}
     </>
   );
-
-  function disambiguateLabel(key, value) {
-    switch (key) {
-      case "moneySpent":
-        return `Money spent is between $${value[0]} and $${value[1]}`;
-      case "taggedWith":
-        return `Tagged with ${value}`;
-      case "accountStatus":
-        return value.map((val) => `Customer ${val}`).join(", ");
-      default:
-        return value;
-    }
-  }
-
-  function isEmpty(value) {
-    if (Array.isArray(value)) {
-      return value.length === 0;
-    } else {
-      return value === "" || value == null;
-    }
-  }
 }
 
 export default GraphicsIndexTable;
