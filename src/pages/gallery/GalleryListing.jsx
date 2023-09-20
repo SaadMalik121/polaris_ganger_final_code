@@ -12,7 +12,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import GraphicsIndexTable from "./GraphicsIndexTable";
 
 import axios from "axios";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 function GalleryListing() {
   const getCategoriesList = useCallback(async (pageNum) => {
@@ -89,15 +89,15 @@ function GalleryListing() {
     <Box padding={5}>
       <Frame>
         <Page
-          title={messages.graphicListingPageTitle}
-          subtitle={messages.graphicListingPageSubtitle}
+          title={<FormattedMessage id="graphicListingPageTitle" />}
+          subtitle={<FormattedMessage id="graphicListingPageSubtitle" />}
           primaryAction={{
-            content: messages.addGraphicButton,
+            content: <FormattedMessage id="addGraphicButton" />,
             url: "/add-graphic",
           }}
           secondaryActions={[
             {
-              content: messages.addGraphicCategoryButton,
+              content: <FormattedMessage id="addGraphicCategoryButton" />,
               onAction: () => {
                 setIsCategoryModelShow(true);
               },
@@ -117,9 +117,9 @@ function GalleryListing() {
             <Modal
               open={isCategoryModelShow}
               onClose={handleChange}
-              title={messages.addCategoryModalTitle}
+              title={<FormattedMessage id="addCategoryModalTitle" />}
               primaryAction={{
-                content: messages.addCategoryModalTitle,
+                content: <FormattedMessage id="addCategoryModalTitle" />,
                 loading: isLoadingDuringSave,
                 onAction: () => {
                   if (newCategoryTitle) {
@@ -132,12 +132,16 @@ function GalleryListing() {
             >
               <Modal.Section>
                 <TextField
-                  placeholder={messages.categoryNamePlaceholder}
+                  placeholder={
+                    <FormattedMessage id="categoryNamePlaceholder" />
+                  }
                   value={newCategoryTitle}
                   onChange={(e) => setNewCategoryTitle(e)}
                 />
                 {isNewCategoryError && (
-                  <InlineError message={messages.categoryNameError} />
+                  <InlineError
+                    message={<FormattedMessage id="categoryNameError" />}
+                  />
                 )}
 
                 <Box style={{ marginTop: "20px" }}>
@@ -153,14 +157,14 @@ function GalleryListing() {
 
           {isSuccessCategoryAdded && (
             <Toast
-              content={messages.successCategoryAddedToast}
+              content={<FormattedMessage id="successCategoryAddedToast" />}
               duration={2000}
               onDismiss={() => setIsSuccessCategoryAdded(false)}
             />
           )}
           {isSaveCategoryError && (
             <Toast
-              content={messages.successCategoryErrorToast}
+              content={<FormattedMessage id="successCategoryErrorToast" />}
               duration={2000}
               onDismiss={() => setIsSuccessCategoryAdded(false)}
             />

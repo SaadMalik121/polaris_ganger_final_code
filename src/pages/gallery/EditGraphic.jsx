@@ -21,7 +21,7 @@ import {
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 
 function EditGraphic() {
   const params = useParams();
@@ -180,9 +180,9 @@ function EditGraphic() {
         <Modal
           open={isShowDeleteModal}
           onClose={handleChange}
-          title={messages.deleteGraphicTitle}
+          title={<FormattedMessage id="deleteGraphicTitle" />}
           primaryAction={{
-            content: messages.deleteGraphicTitle,
+            content: <FormattedMessage id="deleteGraphicTitle" />,
             loading: isLoadingDelete,
             onAction: async () => {
               try {
@@ -200,20 +200,20 @@ function EditGraphic() {
           }}
         >
           <Modal.Section>
-            <Text>{messages.deleteGraphicDescription}</Text>
+            <Text>{<FormattedMessage id="deleteGraphicDescription" />}</Text>
           </Modal.Section>
         </Modal>
       )}
       <Box>
         <Page
           backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
-          title={messages.editGraphicTitle}
+          title={<FormattedMessage id="editGraphicTitle" />}
         >
           <Layout>
             <Layout.AnnotatedSection
               id="selectCategory"
-              title={messages.selectCategoryLabel}
-              description={messages.selectCategoryDescription}
+              title={<FormattedMessage id="selectCategoryLabel" />}
+              description={<FormattedMessage id="selectCategoryDescription" />}
             >
               <Card sectioned>
                 <FormLayout>
@@ -232,7 +232,7 @@ function EditGraphic() {
             <Card>
               <Box style={{ marginBottom: "15px" }}>
                 <Text as="h4" fontWeight="bold">
-                  {messages.mediaLabel}
+                  {<FormattedMessage id="mediaLabel" />}
                 </Text>
               </Box>
               {/* <Media files={files} setFiles={setFiles} isDisabled={true} /> */}
@@ -244,8 +244,8 @@ function EditGraphic() {
             <Layout>
               <Layout.AnnotatedSection
                 id="addTags"
-                title={messages.addTagsLabel}
-                description={messages.addTagsDescription}
+                title={<FormattedMessage id="addTagsLabel" />}
+                description={<FormattedMessage id="addTagsDescription" />}
               >
                 <Card sectioned>
                   <FormLayout>
@@ -257,13 +257,15 @@ function EditGraphic() {
                       }}
                     >
                       <TextField
-                        label={messages.addTagsLabel}
+                        label={<FormattedMessage id="addTagsLabel" />}
                         value={tagInput}
                         onChange={handleTagInputChange}
-                        placeholder={messages.addTagPlaceholder}
+                        placeholder={"Add a tag"}
                       />
                     </div>
-                    <Button onClick={handleAddTag}>{messages.addTagBtn}</Button>
+                    <Button onClick={handleAddTag}>
+                      {<FormattedMessage id="addTagBtn" />}
+                    </Button>
 
                     {tags?.length > 0 && (
                       <Box>
@@ -291,13 +293,15 @@ function EditGraphic() {
             <Layout>
               <Layout.AnnotatedSection
                 id="graphicsStatus"
-                title={messages.graphicsStatusLabel}
-                description={messages.graphicsStatusDescription}
+                title={<FormattedMessage id="graphicsStatusLabel" />}
+                description={
+                  <FormattedMessage id="graphicsStatusDescription" />
+                }
               >
                 <Card sectioned>
                   <FormLayout>
                     <Select
-                      label={messages.statusSelectLabel}
+                      label={<FormattedMessage id="statusSelectLabel" />}
                       options={statusOptions}
                       onChange={handleSelectChangeStatus}
                       value={selectedStatus}
@@ -311,7 +315,7 @@ function EditGraphic() {
           <HorizontalStack align="end">
             <Box style={{ marginBottom: "10px", marginRight: "10px" }}>
               <Button outline onClick={() => setIsShowDeleteModal(true)}>
-                {messages.deleteGraphicBtn}
+                {<FormattedMessage id="deleteGraphicBtn" />}
               </Button>
             </Box>
             <Box style={{ marginBottom: "10px" }}>
@@ -321,7 +325,7 @@ function EditGraphic() {
                 loading={isEditLoading}
                 disabled={isEditDisabled}
               >
-                {messages.editGraphicBtn}
+                {<FormattedMessage id="editGraphicBtn" />}
               </Button>
             </Box>
           </HorizontalStack>
