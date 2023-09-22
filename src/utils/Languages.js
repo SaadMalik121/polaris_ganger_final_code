@@ -57,7 +57,7 @@ const messagesInEnglish = {
   addGraphicsTitle: "Add a Gallery",
   selectCategoryLabel: "Select a Category",
   selectCategoryDescription:
-    "Choose a category from the dropdown menu where you would like to include a graphic.",
+    "Choose a category from the dropdown menu where you would like to include a gallery.",
   mediaLabel: "Media",
   addTagsLabel: "Add Tags",
   addTagsDescription:
@@ -66,13 +66,14 @@ const messagesInEnglish = {
   addTagBtn: "Add Tag",
   graphicsStatusLabel: "Gallery Status",
   graphicsStatusDescription:
-    "Indicate whether you intend to Display this graphic to customers or not.",
+    "Indicate whether you intend to Display this gallery to customers or not.",
   statusSelectLabel: "Status",
   saveBtn: "Save",
+  categoryError: "Category is Required",
 
   //Edit Graphic
   editGraphicTitle: "Edit a Gallery",
-  editGraphicBtn: "Edit Galery",
+  editGraphicBtn: "Save",
   deleteGraphicBtn: "Delete",
   deleteGraphicTitle: "Delete Gallery",
   deleteGraphicDescription: "Are you sure you want to delete this gallery?",

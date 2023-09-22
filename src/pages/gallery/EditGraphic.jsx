@@ -33,8 +33,9 @@ function EditGraphic() {
   const [isShowDeleteModal, setIsShowDeleteModal] = useState(false);
   const [categoriesList, setCategoriesList] = useState();
   const [selectedGallery, setSelectedGallery] = useState();
-  const { messages } = useIntl();
   const [selectedCategory, setSelectedCategory] = useState();
+  const [categoryOptionsList, setCategoryOptionsList] = useState();
+
   const [isEditLoading, setIsEditLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState();
   const [isDeleteError, setIsDeleteError] = useState(false);
@@ -44,44 +45,13 @@ function EditGraphic() {
   const [tagInput, setTagInput] = useState("");
   const [tagInputError, setTagInputError] = useState();
   const [isEditDisabled, setIsEditDisabled] = useState(true);
+  const [categoryError, setCategoryError] = useState();
 
-  const categoryOptions = categoriesList?.data.map((category) => {
+  const categoryOptions = categoryOptionsList?.map((category) => {
     return { value: category?.id.toString(), label: category?.title };
   });
 
-  const getSelecetedGraphicDetail = useCallback(async () => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/getGallery/${parseInt(
-        params.id
-      )}?shop=kamrandevstore.myshopify.com`
-    );
-    setSelectedGallery(data?.data);
-
-    setSelectedCategory(data?.data.category_id.toString());
-    setTags(data?.data?.tags?.split(","));
-    setFile(data?.data?.file);
-    setSelectedStatus(data?.data?.active === 0 ? "InActive" : "Active");
-    setTagInputError(false);
-  }, [params.id]);
-
-  const getCategoriesList = useCallback(async (pageNum) => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
-    );
-    setCategoriesList(data.data);
-  }, []);
-
-  // Validation function for tag input
-  const validateTagInput = () => {
-    if (tags.length === 0) {
-      setTagInputError(true);
-      return true;
-    } else {
-      setTagInputError(false);
-      return false;
-    }
-  };
-
+  //AutoComplete Start
   //Auto complete category
   const deselectedOptions = useMemo(
     () => (categoryOptions ? categoryOptions : []),
@@ -136,10 +106,67 @@ function EditGraphic() {
     />
   );
 
+  //Autocomplete End
+
+  const getSelecetedGraphicDetail = useCallback(async () => {
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/getGallery/${parseInt(
+        params.id
+      )}?shop=kamrandevstore.myshopify.com`
+    );
+    setSelectedGallery(data?.data);
+
+    setSelectedCategory(data?.data.category_id.toString());
+    setTags(data?.data?.tags?.split(","));
+    setFile(data?.data?.file);
+    setSelectedStatus(data?.data?.active === 0 ? "InActive" : "Active");
+    setTagInputError(false);
+
+    //Pre filled category
+    // updateSelection([data?.data?.category_id.toString()]);
+  }, [params.id]);
+
+  const getCategoriesList = useCallback(async (pageNum) => {
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
+    );
+    setCategoriesList(data.data);
+  }, []);
+
+  const getCategoriesListWithoutPagination = useCallback(async (value) => {
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/searchCategoryWithoutPagination?shop=kamrandevstore.myshopify.com`
+    );
+    setCategoryOptionsList(data?.data);
+  }, []);
+
+  // Validation function for tag input
+  const validateTagInput = () => {
+    if (tags.length === 0) {
+      setTagInputError(true);
+      return true;
+    } else {
+      setTagInputError(false);
+      return false;
+    }
+  };
+
+  const validateCategory = () => {
+    if (selectedOptions[0]) {
+      setCategoryError(false);
+    } else {
+      setCategoryError(true);
+    }
+  };
+
   useEffect(() => {
     getCategoriesList();
     getSelecetedGraphicDetail();
   }, [getCategoriesList, getSelecetedGraphicDetail]);
+
+  useEffect(() => {
+    getCategoriesListWithoutPagination();
+  }, [getCategoriesListWithoutPagination]);
   const navigate = useNavigate();
 
   const handleTagInputChange = useCallback((value) => {
@@ -184,6 +211,7 @@ function EditGraphic() {
   const editGraphicData = async () => {
     try {
       validateTagInput();
+      validateCategory();
       if (tagInputError === false) {
         setIsEditLoading(true);
         const formData = new FormData();
@@ -293,6 +321,11 @@ function EditGraphic() {
                     onSelect={updateSelection}
                     textField={textField}
                   />
+                  {categoryError && (
+                    <InlineError
+                      message={<FormattedMessage id="categoryError" />}
+                    />
+                  )}
                 </FormLayout>
               </Card>
             </Layout.AnnotatedSection>

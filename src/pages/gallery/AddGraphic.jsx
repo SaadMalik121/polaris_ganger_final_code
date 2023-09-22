@@ -34,11 +34,13 @@ function AddGraphic() {
 
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [isSaveError, setIsSaveError] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState();
+  // const [selectedCategory, setSelectedCategory] = useState();
   const [selectedStatus, setSelectedStatus] = useState("Active");
+  const [categoryError, setCategoryError] = useState();
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
-  const categoryOptions = categoriesList?.data.map((category) => {
+  const [categoryOptionsList, setCategoryOptionsList] = useState();
+  const categoryOptions = categoryOptionsList?.map((category) => {
     return { value: category?.id.toString(), label: category?.title };
   });
 
@@ -80,6 +82,7 @@ function AddGraphic() {
 
       setSelectedOptions(selected);
       setInputValue(selectedValue[0] || "");
+      setCategoryError(false);
     },
     [options]
   );
@@ -99,11 +102,18 @@ function AddGraphic() {
     setTagInput(value);
   }, []);
 
+  const getCategoriesListWithoutPagination = useCallback(async (value) => {
+    const { data } = await axios.post(
+      `https://gangr.uforiaprojects.com/api/local/searchCategoryWithoutPagination?shop=kamrandevstore.myshopify.com`
+    );
+    setCategoryOptionsList(data?.data);
+  }, []);
+
   const getCategoriesList = useCallback(async (pageNum) => {
     const { data } = await axios.post(
       `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
     );
-    setCategoriesList(data.data);
+    setCategoriesList(data?.data);
   }, []);
 
   // State variables for error messages
@@ -128,16 +138,27 @@ function AddGraphic() {
     }
   };
 
+  const validateCategory = () => {
+    if (selectedOptions[0]) {
+      setCategoryError(false);
+    } else {
+      setCategoryError(true);
+    }
+  };
   useEffect(() => {
     getCategoriesList();
   }, [getCategoriesList]);
 
-  // After fetching categoriesList, set the initial selectedCategory
   useEffect(() => {
-    if (categoriesList && categoriesList.data.length > 0) {
-      setSelectedCategory(categoriesList.data[0].id.toString());
-    }
-  }, [categoriesList]);
+    getCategoriesListWithoutPagination();
+  }, [getCategoriesListWithoutPagination]);
+
+  // After fetching categoriesList, set the initial selectedCategory
+  // useEffect(() => {
+  //   if (categoriesList && categoriesList.data.length > 0) {
+  //     setSelectedCategory(categoriesList.data[0].id.toString());
+  //   }
+  // }, [categoriesList]);
 
   useEffect(() => {
     if (files.length > 0) {
@@ -160,9 +181,6 @@ function AddGraphic() {
     },
     [tags]
   );
-  const handleSelectChangeCategory = useCallback((value) => {
-    setSelectedCategory(value);
-  }, []);
 
   const handleSelectChangeStatus = useCallback(
     (value) => setSelectedStatus(value),
@@ -170,11 +188,15 @@ function AddGraphic() {
   );
 
   const saveGraphic = async () => {
-    console.log();
     try {
       validateFiles();
       validateTagInput();
-      if (filesError === false && tagInputError === false) {
+      validateCategory();
+      if (
+        filesError === false &&
+        tagInputError === false &&
+        categoryError === false
+      ) {
         setIsSaveLoading(true);
         const formData = new FormData();
         for (let i = 0; i < files.length; i++) {
@@ -236,25 +258,18 @@ function AddGraphic() {
             >
               <Card sectioned>
                 <FormLayout>
-                  {/* <Select
-                    label={<FormattedMessage id="selectCategoryLabel" />}
-                    options={categoryOptions}
-                    onChange={handleSelectChangeCategory}
-                    value={selectedCategory}
-                  />
-                  {categoryError && (
-                    <InlineError
-                      message="At least one media must be added"
-                      fieldID="myFieldID"
-                    />
-                  )} */}
-
                   <Autocomplete
                     options={options}
                     selected={selectedOptions}
                     onSelect={updateSelection}
                     textField={textField}
                   />
+
+                  {categoryError && (
+                    <InlineError
+                      message={<FormattedMessage id="categoryError" />}
+                    />
+                  )}
                 </FormLayout>
               </Card>
             </Layout.AnnotatedSection>

@@ -339,6 +339,7 @@ function GraphicsIndexTable({
           content: <FormattedMessage id="editCategoryDeleteBtn" />,
           onAction: () => {
             setIsShowDeleteModal(true);
+            setIsEditCategoryModelDisplay(false);
           },
         }}
       >
