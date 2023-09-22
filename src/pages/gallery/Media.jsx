@@ -28,9 +28,9 @@ export default function Media({ files, setFiles, isDisabled = false }) {
               }
             />
             <div>
-              {file.name}
+              {/* {file.name} */}
               <Text variant="bodySm" as="p">
-                {file.size} bytes
+                {/* {file.size} bytes */}
               </Text>
             </div>
           </LegacyStack>

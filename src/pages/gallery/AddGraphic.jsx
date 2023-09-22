@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Banner,
   Box,
   Button,
@@ -6,6 +7,7 @@ import {
   FormLayout,
   Frame,
   HorizontalStack,
+  Icon,
   InlineError,
   Layout,
   Page,
@@ -16,7 +18,9 @@ import {
   TextField,
   Toast,
 } from "@shopify/polaris";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { SearchMinor } from "@shopify/polaris-icons";
+
 import Media from "./Media";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -34,6 +38,62 @@ function AddGraphic() {
   const [selectedStatus, setSelectedStatus] = useState("Active");
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
+  const categoryOptions = categoriesList?.data.map((category) => {
+    return { value: category?.id.toString(), label: category?.title };
+  });
+
+  //Auto complete category
+  const deselectedOptions = useMemo(
+    () => (categoryOptions ? categoryOptions : []),
+    [categoryOptions]
+  );
+  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [inputValue, setInputValue] = useState("");
+  const [options, setOptions] = useState(deselectedOptions);
+
+  const updateText = useCallback(
+    (value) => {
+      setInputValue(value);
+
+      if (value === "") {
+        setOptions(deselectedOptions);
+        return;
+      }
+
+      const filterRegex = new RegExp(value, "i");
+      const resultOptions = deselectedOptions.filter((option) =>
+        option.label.match(filterRegex)
+      );
+      setOptions(resultOptions);
+    },
+    [deselectedOptions]
+  );
+
+  const updateSelection = useCallback(
+    (selected) => {
+      const selectedValue = selected.map((selectedItem) => {
+        const matchedOption = options.find((option) => {
+          return option.value.match(selectedItem);
+        });
+        return matchedOption && matchedOption.label;
+      });
+
+      setSelectedOptions(selected);
+      setInputValue(selectedValue[0] || "");
+    },
+    [options]
+  );
+
+  const textField = (
+    <Autocomplete.TextField
+      onChange={updateText}
+      label="Select a category"
+      value={inputValue}
+      prefix={<Icon source={SearchMinor} color="base" />}
+      placeholder="Search"
+      autoComplete="off"
+    />
+  );
 
   const handleTagInputChange = useCallback((value) => {
     setTagInput(value);
@@ -47,18 +107,8 @@ function AddGraphic() {
   }, []);
 
   // State variables for error messages
-  const [categoryError, setCategoryError] = useState();
   const [tagInputError, setTagInputError] = useState();
   const [filesError, setFilesError] = useState();
-
-  // Validation function for category selection
-  const validateCategory = (value) => {
-    if (!value) {
-      setCategoryError(true);
-    } else {
-      setCategoryError(false);
-    }
-  };
 
   // Validation function for tag input
   const validateTagInput = () => {
@@ -112,7 +162,6 @@ function AddGraphic() {
   );
   const handleSelectChangeCategory = useCallback((value) => {
     setSelectedCategory(value);
-    validateCategory(value);
   }, []);
 
   const handleSelectChangeStatus = useCallback(
@@ -121,6 +170,7 @@ function AddGraphic() {
   );
 
   const saveGraphic = async () => {
+    console.log();
     try {
       validateFiles();
       validateTagInput();
@@ -132,7 +182,8 @@ function AddGraphic() {
         }
         formData.append("tags", tags.toString());
         formData.append("active", selectedStatus === "Active" ? true : false);
-        formData.append("category_id", parseInt(selectedCategory));
+        // formData.append("category_id", parseInt(selectedCategory));
+        formData.append("category_id", parseInt(selectedOptions[0]));
         const { data } = await axios.post(
           `https://gangr.uforiaprojects.com/api/local/saveGallery?shop=kamrandevstore.myshopify.com`,
           formData
@@ -147,10 +198,6 @@ function AddGraphic() {
     }
   };
 
-  const categoryOptions = categoriesList?.data.map((category) => {
-    return { value: category?.id.toString(), label: category?.title };
-  });
-
   const statusOptions = [
     { label: "Active", value: "Active" },
     { label: "InActive", value: "InActive" },
@@ -161,7 +208,7 @@ function AddGraphic() {
       <Box padding={"10"}>
         {isSaveError && (
           <Banner
-            title="Erorr while saving graphic"
+            title="Erorr while saving gallery"
             status="critical"
             onDismiss={() => {
               setIsSaveError(false);
@@ -172,7 +219,7 @@ function AddGraphic() {
         )}
         {isSaveError && (
           <Toast
-            content="Error while saving graphic"
+            content="Error while saving gallery"
             onDismiss={() => setIsSaveError(false)}
           />
         )}
@@ -189,7 +236,7 @@ function AddGraphic() {
             >
               <Card sectioned>
                 <FormLayout>
-                  <Select
+                  {/* <Select
                     label={<FormattedMessage id="selectCategoryLabel" />}
                     options={categoryOptions}
                     onChange={handleSelectChangeCategory}
@@ -200,7 +247,14 @@ function AddGraphic() {
                       message="At least one media must be added"
                       fieldID="myFieldID"
                     />
-                  )}
+                  )} */}
+
+                  <Autocomplete
+                    options={options}
+                    selected={selectedOptions}
+                    onSelect={updateSelection}
+                    textField={textField}
+                  />
                 </FormLayout>
               </Card>
             </Layout.AnnotatedSection>

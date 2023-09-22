@@ -14,10 +14,12 @@ import {
   Pagination,
   Modal,
   Select,
+  Text,
 } from "@shopify/polaris";
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { FormattedMessage } from "react-intl";
 
 function GraphicsIndexTable({
   categoryList,
@@ -33,6 +35,13 @@ function GraphicsIndexTable({
   const [isSuccessCategoryEdited, setIsSuccessCategoryEdited] = useState(false);
   const [isGraphicLoaded, setIsGraphicLoaded] = useState(false);
   const [galleryListingData, setGalleryListingData] = useState();
+  const [isEditCategoryLoading, setIsEditCategoryLoading] = useState(false);
+  const [isEditBtnDisabled, setIsEditBtnDisabled] = useState(true);
+  //Delete Category
+  const [isShowDeleteModal, setIsShowDeleteModal] = useState(false);
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
+  const [isDeleteError, setIsDeleteError] = useState(false);
+  const [isDeleteErrorSuccess, setIsDeleteErrorSuccess] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [queryValue, setQueryValue] = useState("");
@@ -40,15 +49,16 @@ function GraphicsIndexTable({
   const [selectedActiveStatus, setSelectedActiveStatus] = useState();
 
   //Modal
-  const handleChange = useCallback(
-    () => setIsEditCategoryModelDisplay(!isEditCategoryModelDisplay),
-    [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay]
-  );
+  const handleChange = useCallback(() => {
+    setIsEditCategoryModelDisplay(!isEditCategoryModelDisplay);
+    setIsEditBtnDisabled(true);
+  }, [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay]);
 
   //Edit Category
   const handleStatusChange = useCallback(
     (value) => {
       setSelectedActiveStatus(value === "true" ? true : false);
+      setIsEditBtnDisabled(false);
     },
     [setSelectedActiveStatus]
   );
@@ -58,7 +68,13 @@ function GraphicsIndexTable({
     { label: "InActive", value: false },
   ];
 
+  //Delete Category Modal
+  const handleDeleteModalChange = useCallback(
+    () => setIsShowDeleteModal(!isShowDeleteModal),
+    [isShowDeleteModal, setIsShowDeleteModal]
+  );
   const handleEditCategory = useCallback(async () => {
+    setIsEditCategoryLoading(true);
     await axios.post(
       "https://gangr.uforiaprojects.com/api/local/saveCategory?shop=kamrandevstore.myshopify.com",
       {
@@ -68,9 +84,11 @@ function GraphicsIndexTable({
       }
     );
     setIsEditCategoryError(false);
+    setIsEditCategoryLoading(false);
     setIsSuccessCategoryEdited(true);
     setIsEditCategoryModelDisplay(false);
     setEditCategory("");
+    setIsEditBtnDisabled(true);
     getCategories();
   }, [
     editCategory,
@@ -100,9 +118,9 @@ function GraphicsIndexTable({
     if (selected === 1) {
       getCategoriesListing();
     }
-  }, [queryValue]);
+  }, [queryValue, handleDeleteModalChange]);
 
-  const [itemStrings] = useState(["All", "Categories", "Graphics"]);
+  const [itemStrings] = useState(["Gallery", "Categories"]);
 
   const tabs = itemStrings.map((item, index) => ({
     content: item,
@@ -123,6 +141,10 @@ function GraphicsIndexTable({
       setQueryValue(value);
       if (value.length >= 3 && selected !== 1) {
         setIsLoading(true);
+
+        const formData = new FormData();
+        formData.append("tags", value);
+        // formData.append("title", value);
 
         const { data: tagsSearch } = await axios.post(
           "https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com",
@@ -297,19 +319,26 @@ function GraphicsIndexTable({
       )}
 
       {/* Edit Category MODAL */}
-
       <Modal
         open={isEditCategoryModelDisplay}
         onClose={handleChange}
-        title={"Edit Category"}
+        title={<FormattedMessage id="editCategoryModalTitle" />}
         primaryAction={{
-          content: "Edit Category",
+          loading: isEditCategoryLoading,
+          content: <FormattedMessage id="editCategorySaveBtn" />,
+          disabled: isEditBtnDisabled,
           onAction: () => {
             if (editCategory) {
               handleEditCategory();
             } else {
               setIsEditCategoryError(true);
             }
+          },
+        }}
+        secondaryActions={{
+          content: <FormattedMessage id="editCategoryDeleteBtn" />,
+          onAction: () => {
+            setIsShowDeleteModal(true);
           },
         }}
       >
@@ -319,6 +348,7 @@ function GraphicsIndexTable({
             value={editCategory}
             onChange={(e) => {
               setEditCategory(e);
+              setIsEditBtnDisabled(false);
             }}
           />
           {isEditCategoryError && (
@@ -333,6 +363,53 @@ function GraphicsIndexTable({
           </Box>
         </Modal.Section>
       </Modal>
+
+      {/* Delete Category Confirmation Modal */}
+      {isDeleteError && (
+        <Toast
+          content="Error while deleting category"
+          duration={2000}
+          onDismiss={() => setIsDeleteError(false)}
+        />
+      )}
+      {isDeleteErrorSuccess && (
+        <Toast
+          content="Category Deleted Successfully"
+          duration={2000}
+          onDismiss={() => setIsDeleteErrorSuccess(false)}
+        />
+      )}
+      {isShowDeleteModal && (
+        <Modal
+          open={isShowDeleteModal}
+          onClose={handleDeleteModalChange}
+          title={<FormattedMessage id="deleteCategoryModalTitle" />}
+          primaryAction={{
+            content: <FormattedMessage id="deleteCategoryYesBtn" />,
+            loading: isLoadingDelete,
+            onAction: async () => {
+              try {
+                setIsLoadingDelete(true);
+                await axios.post(
+                  `https://gangr.uforiaprojects.com/api/local/deleteCategory/${selectedCategoryValue.id}?shop=kamrandevstore.myshopify.com`
+                );
+                setIsLoadingDelete(false);
+                navigation("/gallery-listing");
+                setIsShowDeleteModal(false);
+                setIsEditCategoryModelDisplay(false);
+                setIsDeleteErrorSuccess(true);
+              } catch (error) {
+                setIsDeleteError(true);
+                setIsLoadingDelete(false);
+              }
+            },
+          }}
+        >
+          <Modal.Section>
+            <Text>{<FormattedMessage id="deleteGraphicDescription" />}</Text>
+          </Modal.Section>
+        </Modal>
+      )}
 
       {isSuccessCategoryEdited && (
         <Toast

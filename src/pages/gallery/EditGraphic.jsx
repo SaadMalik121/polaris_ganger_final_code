@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Banner,
   Box,
   Button,
@@ -6,6 +7,7 @@ import {
   FormLayout,
   Frame,
   HorizontalStack,
+  Icon,
   InlineError,
   Layout,
   Modal,
@@ -18,10 +20,12 @@ import {
   Thumbnail,
   Toast,
 } from "@shopify/polaris";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { FormattedMessage, useIntl } from "react-intl";
+import SelectCategoryAutoComplete from "./SelectCategoryAutoComplete";
+import { SearchMinor } from "@shopify/polaris-icons";
 
 function EditGraphic() {
   const params = useParams();
@@ -57,6 +61,7 @@ function EditGraphic() {
     setTags(data?.data?.tags?.split(","));
     setFile(data?.data?.file);
     setSelectedStatus(data?.data?.active === 0 ? "InActive" : "Active");
+    setTagInputError(false);
   }, [params.id]);
 
   const getCategoriesList = useCallback(async (pageNum) => {
@@ -70,10 +75,66 @@ function EditGraphic() {
   const validateTagInput = () => {
     if (tags.length === 0) {
       setTagInputError(true);
+      return true;
     } else {
       setTagInputError(false);
+      return false;
     }
   };
+
+  //Auto complete category
+  const deselectedOptions = useMemo(
+    () => (categoryOptions ? categoryOptions : []),
+    [categoryOptions]
+  );
+  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [inputValue, setInputValue] = useState("");
+  const [options, setOptions] = useState(deselectedOptions);
+
+  const updateText = useCallback(
+    (value) => {
+      setInputValue(value);
+
+      if (value === "") {
+        setOptions(deselectedOptions);
+        return;
+      }
+
+      const filterRegex = new RegExp(value, "i");
+      const resultOptions = deselectedOptions.filter((option) =>
+        option.label.match(filterRegex)
+      );
+      setOptions(resultOptions);
+    },
+    [deselectedOptions]
+  );
+
+  const updateSelection = useCallback(
+    (selected) => {
+      const selectedValue = selected.map((selectedItem) => {
+        const matchedOption = options.find((option) => {
+          return option.value.match(selectedItem);
+        });
+        return matchedOption && matchedOption.label;
+      });
+
+      setSelectedOptions(selected);
+      setInputValue(selectedValue[0] || "");
+      setIsEditDisabled(false);
+    },
+    [options]
+  );
+
+  const textField = (
+    <Autocomplete.TextField
+      onChange={updateText}
+      label="Select a category"
+      value={inputValue}
+      prefix={<Icon source={SearchMinor} color="base" />}
+      placeholder="Search"
+      autoComplete="off"
+    />
+  );
 
   useEffect(() => {
     getCategoriesList();
@@ -99,6 +160,9 @@ function EditGraphic() {
 
       setTags(updatedTags);
       setIsEditDisabled(false);
+      if (tags.length <= 1) {
+        setTagInputError(true);
+      }
     },
     [tags]
   );
@@ -126,13 +190,13 @@ function EditGraphic() {
         formData.append("files[]", file);
         formData.append("tags", tags.toString());
         formData.append("active", selectedStatus === "Active" ? 1 : 0);
-        formData.append("category_id", parseInt(selectedCategory));
+        // formData.append("category_id", parseInt(selectedCategory));
+        formData.append("category_id", parseInt(selectedOptions[0]));
         formData.append("id", parseInt(params.id));
         const { data } = await axios.post(
           `https://gangr.uforiaprojects.com/api/local/saveGallery?shop=kamrandevstore.myshopify.com`,
           formData
         );
-
         setIsEditLoading(false);
         navigate("/gallery-listing");
       }
@@ -152,7 +216,7 @@ function EditGraphic() {
     <Frame>
       {isSaveError && (
         <Banner
-          title="Erorr while saving graphic"
+          title="Erorr while saving gallery"
           status="critical"
           onDismiss={() => {
             setIsSaveError(false);
@@ -171,7 +235,7 @@ function EditGraphic() {
 
       {isDeleteError && (
         <Toast
-          content="Error while deleting graphic"
+          content="Error while deleting gallery"
           duration={2000}
           onDismiss={() => setIsDeleteError(false)}
         />
@@ -217,11 +281,17 @@ function EditGraphic() {
             >
               <Card sectioned>
                 <FormLayout>
-                  <Select
+                  {/* <Select
                     label={messages.selectCategoryLabel}
                     options={categoryOptions}
                     onChange={handleSelectChangeCategory}
                     value={selectedCategory}
+                  /> */}
+                  <Autocomplete
+                    options={options}
+                    selected={selectedOptions}
+                    onSelect={updateSelection}
+                    textField={textField}
                   />
                 </FormLayout>
               </Card>
@@ -314,7 +384,12 @@ function EditGraphic() {
 
           <HorizontalStack align="end">
             <Box style={{ marginBottom: "10px", marginRight: "10px" }}>
-              <Button outline onClick={() => setIsShowDeleteModal(true)}>
+              <Button
+                outline
+                onClick={() => {
+                  setIsShowDeleteModal(true);
+                }}
+              >
                 {<FormattedMessage id="deleteGraphicBtn" />}
               </Button>
             </Box>

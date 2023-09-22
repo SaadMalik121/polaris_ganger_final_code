@@ -34,6 +34,7 @@ function GalleryListing() {
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [isLoadingDuringSave, setIsLoadingDuringSave] = useState(false); //while saving categories
   const [isSaveCategoryError, setIsSaveCategoryError] = useState(false);
+  const [isAddCategoryDisabled, setIsAddCategoryDisabled] = useState(false);
 
   const handleStatusChange = useCallback(
     (value) => {
@@ -119,7 +120,7 @@ function GalleryListing() {
               onClose={handleChange}
               title={<FormattedMessage id="addCategoryModalTitle" />}
               primaryAction={{
-                content: <FormattedMessage id="addCategoryModalTitle" />,
+                content: <FormattedMessage id="addCategoryModalBtn" />,
                 loading: isLoadingDuringSave,
                 onAction: () => {
                   if (newCategoryTitle) {
@@ -132,9 +133,7 @@ function GalleryListing() {
             >
               <Modal.Section>
                 <TextField
-                  placeholder={
-                    <FormattedMessage id="categoryNamePlaceholder" />
-                  }
+                  placeholder={"Catgory Name"}
                   value={newCategoryTitle}
                   onChange={(e) => setNewCategoryTitle(e)}
                 />
