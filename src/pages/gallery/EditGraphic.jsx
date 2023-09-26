@@ -200,7 +200,8 @@ function EditGraphic() {
             setIsLoadingDelete(false);
             navigate("/gallery-listing");
           }
-        });
+        })
+        .catch(err => console.log(err));
   };
 
   useEffect(() => {
