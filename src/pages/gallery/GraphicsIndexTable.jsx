@@ -1,5 +1,4 @@
 import {
-  TextField,
   IndexTable,
   IndexFilters,
   useSetIndexFiltersMode,
@@ -8,117 +7,36 @@ import {
   Thumbnail,
   Spinner,
   Box,
-  HorizontalStack,
-  InlineError,
   Toast,
   Pagination,
   Modal,
-  Select,
   Text,
 } from "@shopify/polaris";
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FormattedMessage } from "react-intl";
+import CategoryModal from "./CategoryModal";
 
 function GraphicsIndexTable({
-  categoryList,
-  getCategories,
-  isLoadingCategories,
-  setCategoriesList,
+  refetch,
 }) {
-  const [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay] =
-    useState(false);
-  const [editCategory, setEditCategory] = useState();
-  const [selectedCategoryValue, setSelectedCategoryValue] = useState("");
-  const [isEditCategoryError, setIsEditCategoryError] = useState(false); //if submit form with empty category
-  const [isSuccessCategoryEdited, setIsSuccessCategoryEdited] = useState(false);
-  const [isGraphicLoaded, setIsGraphicLoaded] = useState(false);
-  const [galleryListingData, setGalleryListingData] = useState();
-  const [isEditCategoryLoading, setIsEditCategoryLoading] = useState(false);
-  const [isEditBtnDisabled, setIsEditBtnDisabled] = useState(true);
-  //Delete Category
-  const [isShowDeleteModal, setIsShowDeleteModal] = useState(false);
-  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
-  const [isDeleteError, setIsDeleteError] = useState(false);
-  const [isDeleteErrorSuccess, setIsDeleteErrorSuccess] = useState(false);
 
+  const navigate = useNavigate();
+  const [listingData, setListingData] = useState([])
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  const [hasNext, setHasNext] = useState(false);
+  const [selected, setSelected] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [queryValue, setQueryValue] = useState("");
-  const navigation = useNavigate();
-  const [selectedActiveStatus, setSelectedActiveStatus] = useState();
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
-  //Modal
-  const handleChange = useCallback(() => {
-    setIsEditCategoryModelDisplay(!isEditCategoryModelDisplay);
-    setIsEditBtnDisabled(true);
-  }, [isEditCategoryModelDisplay, setIsEditCategoryModelDisplay]);
+  const [editCategoryData, setEditCategoryData] = useState();
+  const [isSuccessCategoryEdited, setIsSuccessCategoryEdited] = useState(false);
 
-  //Edit Category
-  const handleStatusChange = useCallback(
-    (value) => {
-      setSelectedActiveStatus(value === "true" ? true : false);
-      setIsEditBtnDisabled(false);
-    },
-    [setSelectedActiveStatus]
-  );
-
-  const activeOptions = [
-    { label: "Active", value: true },
-    { label: "InActive", value: false },
-  ];
-
-  //Delete Category Modal
-  const handleDeleteModalChange = useCallback(
-    () => setIsShowDeleteModal(!isShowDeleteModal),
-    [isShowDeleteModal, setIsShowDeleteModal]
-  );
-  const handleEditCategory = useCallback(async () => {
-    setIsEditCategoryLoading(true);
-    await axios.post(
-      "https://gangr.uforiaprojects.com/api/local/saveCategory?shop=kamrandevstore.myshopify.com",
-      {
-        active: selectedActiveStatus,
-        title: editCategory,
-        id: selectedCategoryValue?.id,
-      }
-    );
-    setIsEditCategoryError(false);
-    setIsEditCategoryLoading(false);
-    setIsSuccessCategoryEdited(true);
-    setIsEditCategoryModelDisplay(false);
-    setEditCategory("");
-    setIsEditBtnDisabled(true);
-    getCategories();
-  }, [
-    editCategory,
-    selectedActiveStatus,
-    selectedCategoryValue,
-    getCategories,
-  ]);
-  async function getGalleryListings(pageNumber) {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com&page=${pageNumber}`
-    );
-    setGalleryListingData(data);
-    setIsGraphicLoaded(true);
-  }
-
-  const getCategoriesListing = async () => {
-    const { data } = await axios.post(
-      "https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com"
-    );
-    setCategoriesList(data?.data);
-  };
-
-  useEffect(() => {
-    if (selected !== 1) {
-      getGalleryListings();
-    }
-    if (selected === 1) {
-      getCategoriesListing();
-    }
-  }, [queryValue, handleDeleteModalChange]);
+  //Delete Category
+  const [showCategoryDeletedAlert, setShowCategoryDeletedAlert] = useState(false);
 
   const [itemStrings] = useState(["Gallery", "Categories"]);
 
@@ -129,7 +47,29 @@ function GraphicsIndexTable({
     id: `${item}-${index}`,
     isLocked: index === 0,
   }));
-  const [selected, setSelected] = useState(0);
+
+  const handleEditCategory = useCallback(async (data) => {
+    setEditCategoryData(data);
+    setShowCategoryModal(true);
+  }, []);
+
+  const getListingData = async () => {
+    let url = selected === 0 ? `https://gangr.uforiaprojects.com/api/local/searchGallery?page=${currentPage}&shop=kamrandevstore.myshopify.com` : `https://gangr.uforiaprojects.com/api/local/searchCategory?page=${currentPage}&shop=kamrandevstore.myshopify.com`;
+    setIsLoading(true);
+
+      await axios.post(url, { keyword: queryValue })
+          .then( res => {
+            if(res.status === 200){
+              setIsLoading(false);
+              const { data, prev_page_url, next_page_url } = res.data.details;
+              setListingData(data);
+              next_page_url ? setHasNext(true) : setHasNext(false);
+              prev_page_url ? setHasPrevious(true) : setHasPrevious(false);
+            }
+          })
+          .catch(err => console.log(err));
+  };
+
 
   const { mode, setMode } = useSetIndexFiltersMode();
   const onHandleCancel = () => {
@@ -139,47 +79,8 @@ function GraphicsIndexTable({
   const handleFiltersQueryChange = useCallback(
     async (value) => {
       setQueryValue(value);
-      if (value.length >= 3 && selected !== 1) {
-        setIsLoading(true);
-
-        const formData = new FormData();
-        formData.append("tags", value);
-        // formData.append("title", value);
-
-        const { data: tagsSearch } = await axios.post(
-          "https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com",
-          {
-            tags: value,
-          }
-        );
-        const { data: titleSearch } = await axios.post(
-          "https://gangr.uforiaprojects.com/api/local/searchGallery?shop=kamrandevstore.myshopify.com",
-          {
-            title: value,
-          }
-        );
-
-        setGalleryListingData(
-          tagsSearch?.data?.data?.length > 0 ? tagsSearch : titleSearch
-        );
-        setIsLoading(false);
-      } else if (value.length >= 3 && selected === 1) {
-        setIsLoading(true);
-
-        const { data } = await axios.post(
-          "https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com",
-          {
-            title: value,
-          }
-        );
-
-        setCategoriesList(data?.data);
-        if (data) {
-          setIsLoading(false);
-        }
-      }
     },
-    [selected, setCategoriesList]
+    []
   );
 
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
@@ -194,63 +95,71 @@ function GraphicsIndexTable({
     plural: "graphics",
   };
 
-  let { selectedResources, allResourcesSelected, handleSelectionChange } =
-    useIndexResourceState(
-      selected === 1 ? categoryList?.data : galleryListingData?.data?.data
-    );
+  let { selectedResources, allResourcesSelected, handleSelectionChange } = useIndexResourceState(listingData);
 
-  const isSelectedTabNotCategory = selected !== 1;
-  let rowMarkup;
-  // Render rows conditionally based on the selected tab
-  // Check if the selected tab is not 1 (i.e., not "Category")
-  if (isSelectedTabNotCategory) {
-    rowMarkup = galleryListingData?.data?.data?.map(
-      ({ file, category, active, tags, id }, indexOuter) => (
-        <IndexTable.Row
+  const rowMarkup = selected === 0 ? listingData.map(
+      ({ file, category, active, tags, id }) => (
+          <IndexTable.Row
+              id={id}
+              key={id}
+              selected={selectedResources.includes(id)}
+              onClick={() => navigate(`/edit-graphic/${id}`)}
+          >
+            <IndexTable.Cell>
+              <Thumbnail source={file} size="small" alt="img"/>
+            </IndexTable.Cell>
+            <IndexTable.Cell>{category?.title}</IndexTable.Cell>
+            <IndexTable.Cell>{tags}</IndexTable.Cell>
+            <IndexTable.Cell>
+              <Badge status={!active ? "critical" : "success"}>
+                {active ? "Active" : "Inactive"}
+              </Badge>
+            </IndexTable.Cell>
+          </IndexTable.Row>
+      )
+  ) : listingData?.map(({ id, title, active }) => (
+      <IndexTable.Row
           id={id}
           key={id}
           selected={selectedResources.includes(id)}
-          onClick={() => navigation(`/edit-graphic/${id}`)}
-        >
-          <IndexTable.Cell>
-            <Thumbnail source={file} size="small" />
-          </IndexTable.Cell>
-          <IndexTable.Cell>{category?.title}</IndexTable.Cell>
-          <IndexTable.Cell>{tags}</IndexTable.Cell>
-          <IndexTable.Cell>
-            <Badge status={!active ? "critical" : "success"}>
-              {active ? "Active" : "Inactive"}
-            </Badge>
-          </IndexTable.Cell>
-        </IndexTable.Row>
-      )
-    );
-  } else {
-    // Render rows for the "Category" tab
-    rowMarkup = categoryList?.data.map((data) => (
-      <IndexTable.Row
-        id={data?.id}
-        key={data?.id}
-        selected={selectedResources.includes(data?.id)}
-        onClick={() => {
-          setIsEditCategoryModelDisplay(true);
-          setEditCategory(data?.title);
-          setSelectedCategoryValue(data);
-          setSelectedActiveStatus(data?.active ? true : false);
-        }}
+          onClick={() => {
+            handleEditCategory({ id, title, active });
+          }}
       >
         <IndexTable.Cell></IndexTable.Cell>
-        <IndexTable.Cell>{data?.title}</IndexTable.Cell>
+        <IndexTable.Cell>{title}</IndexTable.Cell>
         <IndexTable.Cell>
-          <Badge status={data?.active === 0 ? "critical" : "success"}>
-            {data?.active === 0 ? "InActive" : "Active"}
+          <Badge status={active === 0 ? "critical" : "success"}>
+            {active === 0 ? "InActive" : "Active"}
           </Badge>
         </IndexTable.Cell>
       </IndexTable.Row>
-    ));
-  }
+  ));
+
+  useEffect(() => {
+    if(queryValue.length === 0 || queryValue.length > 2){
+      getListingData();
+    }
+  }, [queryValue]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+    getListingData();
+  }, [selected]);
+
+  useEffect(() => {
+    getListingData();
+  }, [currentPage, refetch, isSuccessCategoryEdited, showCategoryDeletedAlert]);
+
   return (
     <>
+      {showCategoryModal && <CategoryModal
+          // show={showCategoryModal}
+          onHide={() => setShowCategoryModal(false)}
+          editCategoryData={editCategoryData}
+          onSuccess={() => setIsSuccessCategoryEdited(true)}
+          onDelete={() => setShowCategoryDeletedAlert(true)}
+      /> }
       <IndexFilters
         queryValue={queryValue}
         queryPlaceholder="Searching in all"
@@ -272,8 +181,7 @@ function GraphicsIndexTable({
         mode={mode}
         setMode={setMode}
       />
-      {(selected !== 1 && !isGraphicLoaded) ||
-      (selected === 1 && isLoadingCategories) ? (
+      {isLoading ? (
         <Box
           style={{
             display: "flex",
@@ -284,21 +192,15 @@ function GraphicsIndexTable({
         >
           <Spinner />
         </Box>
-      ) : galleryListingData && //when category is loading
-        !isLoading ? ( //when typing more than 3 words (loader display)
-        <IndexTable
+      ) : <IndexTable
           resourceName={resourceName}
-          itemCount={
-            selected !== 1
-              ? galleryListingData?.data?.data?.length || 0
-              : categoryList?.data?.length || 0
-          }
+          itemCount={listingData.length}
           selectedItemsCount={
             allResourcesSelected ? "All" : selectedResources.length
           }
           onSelectionChange={handleSelectionChange}
           headings={
-            selected !== 1
+            selected === 0
               ? [
                   { title: "" },
                   { title: "Category" },
@@ -309,107 +211,15 @@ function GraphicsIndexTable({
           }
         >
           {rowMarkup}
-        </IndexTable>
-      ) : (
-        <Box padding={10}>
-          <HorizontalStack align="center">
-            <Spinner accessibilityLabel="Spinner example" size="large" />
-          </HorizontalStack>
-        </Box>
-      )}
-
-      {/* Edit Category MODAL */}
-      <Modal
-        open={isEditCategoryModelDisplay}
-        onClose={handleChange}
-        title={<FormattedMessage id="editCategoryModalTitle" />}
-        primaryAction={{
-          loading: isEditCategoryLoading,
-          content: <FormattedMessage id="editCategorySaveBtn" />,
-          disabled: isEditBtnDisabled,
-          onAction: () => {
-            if (editCategory) {
-              handleEditCategory();
-            } else {
-              setIsEditCategoryError(true);
-            }
-          },
-        }}
-        secondaryActions={{
-          content: <FormattedMessage id="editCategoryDeleteBtn" />,
-          onAction: () => {
-            setIsShowDeleteModal(true);
-            setIsEditCategoryModelDisplay(false);
-          },
-        }}
-      >
-        <Modal.Section>
-          <TextField
-            placeholder="Enter Category Name"
-            value={editCategory}
-            onChange={(e) => {
-              setEditCategory(e);
-              setIsEditBtnDisabled(false);
-            }}
-          />
-          {isEditCategoryError && (
-            <InlineError message={"Category field can not be empty"} />
-          )}
-          <Box style={{ marginTop: "20px" }}>
-            <Select
-              options={activeOptions}
-              onChange={handleStatusChange}
-              value={selectedActiveStatus}
-            />
-          </Box>
-        </Modal.Section>
-      </Modal>
+        </IndexTable>}
 
       {/* Delete Category Confirmation Modal */}
-      {isDeleteError && (
-        <Toast
-          content="Error while deleting category"
-          duration={2000}
-          onDismiss={() => setIsDeleteError(false)}
-        />
-      )}
-      {isDeleteErrorSuccess && (
+      {showCategoryDeletedAlert && (
         <Toast
           content="Category Deleted Successfully"
           duration={2000}
-          onDismiss={() => setIsDeleteErrorSuccess(false)}
+          onDismiss={() => setShowCategoryDeletedAlert(false)}
         />
-      )}
-      {isShowDeleteModal && (
-        <Modal
-          open={isShowDeleteModal}
-          onClose={handleDeleteModalChange}
-          title={<FormattedMessage id="deleteCategoryModalTitle" />}
-          primaryAction={{
-            content: <FormattedMessage id="deleteCategoryYesBtn" />,
-            loading: isLoadingDelete,
-            onAction: async () => {
-              try {
-                setIsLoadingDelete(true);
-                await axios.post(
-                  `https://gangr.uforiaprojects.com/api/local/deleteCategory/${selectedCategoryValue.id}?shop=kamrandevstore.myshopify.com`
-                );
-                setIsLoadingDelete(false);
-                navigation("/gallery-listing");
-                setIsShowDeleteModal(false);
-                setIsEditCategoryModelDisplay(false);
-                setIsDeleteErrorSuccess(true);
-              } catch (error) {
-                setIsDeleteError(true);
-                setIsLoadingDelete(false);
-              }
-            },
-          }}
-        >
-          <Modal.Section>
-            <Text>{<FormattedMessage id="deleteGraphicDescription" />}</Text>
-          </Modal.Section>
-        </Modal>
       )}
 
       {isSuccessCategoryEdited && (
@@ -419,32 +229,9 @@ function GraphicsIndexTable({
           onDismiss={() => setIsSuccessCategoryEdited(false)}
         />
       )}
-      {/* Pagination for category tab */}
-      {selected === 1 && categoryList?.last_page > 1 && (
-        <Box
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            marginTop: "30px",
-          }}
-        >
-          <Pagination
-            hasPrevious={categoryList?.current_page > 1}
-            onPrevious={() => {
-              getCategories(categoryList?.current_page - 1);
-            }}
-            hasNext={categoryList?.current_page < categoryList?.last_page}
-            onNext={() => {
-              getCategories(categoryList?.current_page + 1);
-              selectedResources = [];
-            }}
-          />
-        </Box>
-      )}
 
-      {/* Pagination for all/graphic  tab */}
-      {selected !== 1 && galleryListingData?.data?.last_page > 1 && (
+      {/* Pagination for category tab */}
+      {(hasNext || hasPrevious) && (
         <Box
           style={{
             display: "flex",
@@ -454,17 +241,13 @@ function GraphicsIndexTable({
           }}
         >
           <Pagination
-            hasPrevious={galleryListingData?.data?.current_page > 1}
+            hasPrevious={hasPrevious}
             onPrevious={() => {
-              getGalleryListings(galleryListingData?.data?.current_page - 1);
+              setCurrentPage(currentPage - 1);
             }}
-            hasNext={
-              galleryListingData?.data?.current_page <
-              galleryListingData?.data?.last_page
-            }
+            hasNext={hasNext}
             onNext={() => {
-              getGalleryListings(galleryListingData?.data?.current_page + 1);
-              selectedResources = [];
+              setCurrentPage(currentPage + 1);
             }}
           />
         </Box>

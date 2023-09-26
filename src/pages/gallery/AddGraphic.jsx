@@ -1,6 +1,5 @@
 import {
   Autocomplete,
-  Banner,
   Box,
   Button,
   Card,
@@ -19,7 +18,7 @@ import {
   Toast,
   VerticalStack,
 } from "@shopify/polaris";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { SearchMinor } from "@shopify/polaris-icons";
 
 import Media from "./Media";
@@ -31,42 +30,55 @@ function AddGraphic() {
   const navigate = useNavigate();
   const [files, setFiles] = useState([]);
 
+  const [loading, setLoading] = useState(false);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
-  const [isSaveError, setIsSaveError] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("Active");
   const [categoryError, setCategoryError] = useState();
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
-  const [categoryOptionsList, setCategoryOptionsList] = useState();
-  const categoryOptions = categoryOptionsList?.map((category) => {
-    return { value: category?.id.toString(), label: category?.title };
-  });
 
-  //Auto complete category
-  const deselectedOptions = useMemo(
-    () => (categoryOptions ? categoryOptions : []),
-    [categoryOptions]
-  );
+  // State variables for error messages
+  const [tagInputError, setTagInputError] = useState();
+  const [filesError, setFilesError] = useState();
+
+  const statusOptions = [
+    { label: "Active", value: "Active" },
+    { label: "InActive", value: "InActive" },
+  ];
+
+  const getOptions = (data) => data?.map((category) => {
+      return { value: category?.id.toString(), label: category?.title };
+    });
+
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [inputValue, setInputValue] = useState("");
-  const [options, setOptions] = useState(deselectedOptions);
+  const [options, setOptions] = useState([]);
+
+  const fetchCategoryList = useCallback( (value) => {
+     axios.post(
+        `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com`, {
+          keyword: value
+         }
+    )
+         .then(res => {
+           if(res.status === 200){
+             setLoading(false)
+             const { data } = res.data?.details;
+             setOptions(getOptions(data));
+           }
+         })
+         .catch(err => console.log(err));
+  }, []);
 
   const updateText = useCallback(
     (value) => {
       setInputValue(value);
+      if(value.length < 2) return;
+      if (!loading) setLoading(true)
 
-      if (value === "") {
-        setOptions(deselectedOptions);
-        return;
-      }
-
-      const filterRegex = new RegExp(value, "i");
-      const resultOptions = deselectedOptions.filter((option) =>
-        option.label.match(filterRegex)
-      );
-      setOptions(resultOptions);
+      fetchCategoryList(value);
     },
-    [deselectedOptions]
+    []
   );
 
   const updateSelection = useCallback(
@@ -100,53 +112,6 @@ function AddGraphic() {
     setTagInput(value);
   }, []);
 
-  const getCategoriesListWithoutPagination = useCallback(async (value) => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchCategoryWithoutPagination?shop=kamrandevstore.myshopify.com`
-    );
-    setCategoryOptionsList(data?.data);
-  }, []);
-
-  // State variables for error messages
-  const [tagInputError, setTagInputError] = useState();
-  const [filesError, setFilesError] = useState();
-
-  // Validation function for tag input
-  const validateTagInput = () => {
-    if (tags.length === 0) {
-      setTagInputError(true);
-    } else {
-      setTagInputError(false);
-    }
-  };
-
-  // Validation function for files selection
-  const validateFiles = () => {
-    if (files?.length === 0) {
-      setFilesError(true);
-    } else {
-      setFilesError(false);
-    }
-  };
-
-  const validateCategory = () => {
-    if (selectedOptions[0]) {
-      setCategoryError(false);
-    } else {
-      setCategoryError(true);
-    }
-  };
-
-  useEffect(() => {
-    getCategoriesListWithoutPagination();
-  }, [getCategoriesListWithoutPagination]);
-
-  useEffect(() => {
-    if (files.length > 0) {
-      setFilesError(false);
-    }
-  }, [files]);
-
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() !== "") {
       setTags([...tags, tagInput.trim()]);
@@ -168,209 +133,192 @@ function AddGraphic() {
     []
   );
 
-  const saveGraphic = async () => {
-    try {
-      validateFiles();
-      validateTagInput();
-      validateCategory();
-      if (
-        filesError === false &&
-        tagInputError === false &&
-        categoryError === false
-      ) {
-        setIsSaveLoading(true);
-        const formData = new FormData();
-        for (let i = 0; i < files.length; i++) {
-          formData.append("files[]", files[i]);
-        }
-        formData.append("tags", tags.toString());
-        formData.append("active", selectedStatus === "Active" ? true : false);
-        // formData.append("category_id", parseInt(selectedCategory));
-        formData.append("category_id", parseInt(selectedOptions[0]));
-        const { data } = await axios.post(
+  const validateSubmission = () => {
+    const isCategory = selectedOptions[0], isFile = files?.length !== 0, isTag = tags.length !== 0;
+    setCategoryError(!isCategory);
+    setFilesError(!isFile);
+    setTagInputError(!isTag);
+
+    return isCategory && isFile && isTag;
+  }
+
+  const saveGraphic = () => {
+    const isValidated = validateSubmission();
+
+    if (isValidated) {
+      setIsSaveLoading(true);
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files[]", files[i]);
+      }
+      formData.append("tags", tags.toString());
+      formData.append("active", selectedStatus === "Active");
+      formData.append("category_id", parseInt(selectedOptions[0]));
+      axios.post(
           `https://gangr.uforiaprojects.com/api/local/saveGallery?shop=kamrandevstore.myshopify.com`,
           formData
-        );
-        setIsSaveLoading(false);
-        navigate("/gallery-listing");
-      }
-    } catch (err) {
-      console.log(err);
-      setIsSaveLoading(false);
-      setIsSaveError(true);
+      )
+          .then(res => {
+            if(res.status === 200){
+              setIsSaveLoading(false);
+              navigate("/gallery-listing");
+            }
+          })
+          .catch(err => console.log(err));
     }
   };
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "InActive", value: "InActive" },
-  ];
 
-  return categoryOptionsList ? (
-    <Frame>
-      <Box padding={"10"}>
-        {isSaveError && (
-          <Banner
-            title="Erorr while saving gallery"
-            status="critical"
-            onDismiss={() => {
-              setIsSaveError(false);
-            }}
-          >
-            <p>Unexpected error occour. Kindly try again</p>
-          </Banner>
-        )}
-        {isSaveError && (
-          <Toast
-            content="Error while saving gallery"
-            onDismiss={() => setIsSaveError(false)}
-          />
-        )}
+  useEffect(() => {
+    if (files.length > 0) {
+      setFilesError(false);
+    }
+  }, [files]);
 
-        <Page
-          backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
-          title={<FormattedMessage id="addGraphicsTitle" />}
-        >
-          <Layout>
-            <Layout.AnnotatedSection
-              id="selectCategory"
-              title={<FormattedMessage id="selectCategoryLabel" />}
-              description={<FormattedMessage id="selectCategoryDescription" />}
+  return (
+      <>
+        <Frame>
+          <Box padding={"10"}>
+            <Page
+                backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
+                title={<FormattedMessage id="addGraphicsTitle" />}
             >
-              <Card sectioned>
-                <FormLayout>
-                  <Autocomplete
-                    options={options}
-                    selected={selectedOptions}
-                    onSelect={updateSelection}
-                    textField={textField}
-                  />
+              <Layout>
+                <Layout.AnnotatedSection
+                    id="selectCategory"
+                    title={<FormattedMessage id="selectCategoryLabel" />}
+                    description={<FormattedMessage id="selectCategoryDescription" />}
+                >
+                  <Card sectioned>
+                    <FormLayout>
+                      <Autocomplete
+                          options={options}
+                          selected={selectedOptions}
+                          onSelect={updateSelection}
+                          textField={textField}
+                          loading={loading}
+                      />
 
-                  {categoryError && (
-                    <InlineError
-                      message={<FormattedMessage id="categoryError" />}
-                    />
-                  )}
-                </FormLayout>
-              </Card>
-            </Layout.AnnotatedSection>
-          </Layout>
-
-          <Box style={{ marginTop: "10px" }}>
-            <Card>
-              <Box style={{ marginBottom: "15px" }}>
-                <Text as="h4" fontWeight="bold">
-                  {<FormattedMessage id="mediaLabel" />}
-                </Text>
-              </Box>
-              <Media files={files} setFiles={setFiles} />
-              {filesError && (
-                <InlineError
-                  message="At least one media must be added"
-                  fieldID="myFieldID"
-                />
-              )}
-            </Card>
-          </Box>
-
-          <Box style={{ marginTop: "35px" }}>
-            <Layout>
-              <Layout.AnnotatedSection
-                id="addTags"
-                title={<FormattedMessage id="addTagsLabel" />}
-                description={<FormattedMessage id="addTagsDescription" />}
-              >
-                <Card sectioned>
-                  <FormLayout>
-                    <VerticalStack align="center">
-                      <HorizontalStack align="space-between">
-                        <div
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleAddTag();
-                            }
-                          }}
-                          style={{ width: "80%" }}
-                        >
-                          <TextField
-                            label={<FormattedMessage id="addTagsLabel" />}
-                            value={tagInput}
-                            onChange={handleTagInputChange}
-                            placeholder={"Add a tag"}
+                      {categoryError && (
+                          <InlineError
+                              message={<FormattedMessage id="categoryError" />}
                           />
-                        </div>
-                        <Box style={{ marginTop: "23px" }}>
-                          <Button onClick={handleAddTag}>
-                            {<FormattedMessage id="addTagBtn" />}
-                          </Button>
-                        </Box>
-                      </HorizontalStack>
-                    </VerticalStack>
+                      )}
+                    </FormLayout>
+                  </Card>
+                </Layout.AnnotatedSection>
+              </Layout>
 
-                    {tags.length > 0 && (
-                      <Box>
-                        <HorizontalStack>
-                          {tags.map((tag, index) => (
-                            <Box
-                              style={{ marginRight: "10px", marginTop: "10px" }}
-                              key={index}
+              <Box style={{ marginTop: "10px" }}>
+                <Card>
+                  <Box style={{ marginBottom: "15px" }}>
+                    <Text as="h4" fontWeight="bold">
+                      <FormattedMessage id="mediaLabel" />
+                    </Text>
+                  </Box>
+                  <Media files={files} setFiles={setFiles} />
+                  {filesError && (
+                      <InlineError
+                          message="At least one media must be added"
+                          fieldID="myFieldID"
+                      />
+                  )}
+                </Card>
+              </Box>
+
+              <Box style={{ marginTop: "35px" }}>
+                <Layout>
+                  <Layout.AnnotatedSection
+                      id="addTags"
+                      title={<FormattedMessage id="addTagsLabel" />}
+                      description={<FormattedMessage id="addTagsDescription" />}
+                  >
+                    <Card sectioned>
+                      <FormLayout>
+                        <VerticalStack align="center">
+                          <HorizontalStack align="space-between">
+                            <div
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleAddTag();
+                                  }
+                                }}
+                                style={{ width: "80%" }}
                             >
-                              <Tag onRemove={() => handleRemoveTag(index)}>
-                                {tag}
-                              </Tag>
+                              <TextField
+                                  label={<FormattedMessage id="addTagsLabel" />}
+                                  value={tagInput}
+                                  onChange={handleTagInputChange}
+                                  placeholder={"Add a tag"}
+                              />
+                            </div>
+                            <Box style={{ marginTop: "23px" }}>
+                              <Button onClick={handleAddTag}>
+                                <FormattedMessage id="addTagBtn" />
+                              </Button>
                             </Box>
-                          ))}
-                        </HorizontalStack>
-                      </Box>
-                    )}
-                    {tagInputError && (
-                      <InlineError message="At least one tag must be provided" />
-                    )}
-                  </FormLayout>
-                </Card>
-              </Layout.AnnotatedSection>
-            </Layout>
-          </Box>
+                          </HorizontalStack>
+                        </VerticalStack>
 
-          <Box style={{ marginTop: "35px" }}>
-            <Layout>
-              <Layout.AnnotatedSection
-                id="graphicsStatus"
-                title={<FormattedMessage id="graphicsStatusLabel" />}
-                description={
-                  <FormattedMessage id="graphicsStatusDescription" />
-                }
-              >
-                <Card sectioned>
-                  <FormLayout>
-                    <Select
-                      label={<FormattedMessage id="statusSelectLabel" />}
-                      options={statusOptions}
-                      onChange={handleSelectChangeStatus}
-                      value={selectedStatus}
-                    />
-                  </FormLayout>
-                </Card>
-              </Layout.AnnotatedSection>
-            </Layout>
-          </Box>
+                        {tags.length > 0 && (
+                            <Box>
+                              <HorizontalStack>
+                                {tags.map((tag, index) => (
+                                    <Box
+                                        style={{ marginRight: "10px", marginTop: "10px" }}
+                                        key={index}
+                                    >
+                                      <Tag onRemove={() => handleRemoveTag(index)}>
+                                        {tag}
+                                      </Tag>
+                                    </Box>
+                                ))}
+                              </HorizontalStack>
+                            </Box>
+                        )}
+                        {tagInputError && (
+                            <InlineError message="At least one tag must be provided" />
+                        )}
+                      </FormLayout>
+                    </Card>
+                  </Layout.AnnotatedSection>
+                </Layout>
+              </Box>
 
-          <HorizontalStack align="end">
-            <Box style={{ marginBottom: "10px" }}>
-              <Button primary onClick={saveGraphic} loading={isSaveLoading}>
-                {<FormattedMessage id="saveBtn" />}
-              </Button>
-            </Box>
-          </HorizontalStack>
-        </Page>
-      </Box>
-    </Frame>
-  ) : (
-    <Box padding={10}>
-      <HorizontalStack align="center">
-        <Spinner />
-      </HorizontalStack>
-    </Box>
+              <Box style={{ marginTop: "35px" }}>
+                <Layout>
+                  <Layout.AnnotatedSection
+                      id="graphicsStatus"
+                      title={<FormattedMessage id="graphicsStatusLabel" />}
+                      description={
+                        <FormattedMessage id="graphicsStatusDescription" />
+                      }
+                  >
+                    <Card sectioned>
+                      <FormLayout>
+                        <Select
+                            label={<FormattedMessage id="statusSelectLabel" />}
+                            options={statusOptions}
+                            onChange={handleSelectChangeStatus}
+                            value={selectedStatus}
+                        />
+                      </FormLayout>
+                    </Card>
+                  </Layout.AnnotatedSection>
+                </Layout>
+              </Box>
+
+              <HorizontalStack align="end">
+                <Box style={{ marginBottom: "10px" }}>
+                  <Button primary onClick={saveGraphic} loading={isSaveLoading}>
+                    <FormattedMessage id="saveBtn" />
+                  </Button>
+                </Box>
+              </HorizontalStack>
+            </Page>
+          </Box>
+        </Frame>
+      </>
   );
 }
 

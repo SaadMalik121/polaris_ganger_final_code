@@ -1,6 +1,5 @@
 import {
   Autocomplete,
-  Banner,
   Box,
   Button,
   Card,
@@ -21,7 +20,7 @@ import {
   Toast,
   VerticalStack,
 } from "@shopify/polaris";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { FormattedMessage } from "react-intl";
@@ -29,16 +28,13 @@ import { SearchMinor } from "@shopify/polaris-icons";
 
 function EditGraphic() {
   const params = useParams();
-  const [isSaveError, setIsSaveError] = useState(false);
+  const navigate = useNavigate();
   const [isShowDeleteModal, setIsShowDeleteModal] = useState(false);
-  // const [categoriesList, setCategoriesList] = useState();
-  const [selectedGallery, setSelectedGallery] = useState();
-  const [selectedCategory, setSelectedCategory] = useState();
-  const [categoryOptionsList, setCategoryOptionsList] = useState();
+  const [savedData, setSavedData] = useState();
 
+  const [loading, setLoading] = useState(false);
   const [isEditLoading, setIsEditLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState();
-  const [isDeleteError, setIsDeleteError] = useState(false);
   const [isLoadingDelete, setIsLoadingDelete] = useState(false);
   const [file, setFile] = useState();
   const [tags, setTags] = useState([]);
@@ -47,36 +43,44 @@ function EditGraphic() {
   const [isEditDisabled, setIsEditDisabled] = useState(true);
   const [categoryError, setCategoryError] = useState();
 
-  const categoryOptions = categoryOptionsList?.map((category) => {
+  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [inputValue, setInputValue] = useState("");
+  const [options, setOptions] = useState([]);
+
+  const statusOptions = [
+    { label: "Active", value: "Active" },
+    { label: "InActive", value: "InActive" },
+  ];
+
+  const getOptions = (data) => data?.map((category) => {
     return { value: category?.id.toString(), label: category?.title };
   });
 
-  //AutoComplete Start
-  //Auto complete category
-  const deselectedOptions = useMemo(
-    () => (categoryOptions ? categoryOptions : []),
-    [categoryOptions]
-  );
-  const [selectedOptions, setSelectedOptions] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-  const [options, setOptions] = useState(deselectedOptions);
+  const fetchCategoryList = useCallback( (value) => {
+    axios.post(
+        `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com`, {
+          keyword: value
+        }
+    )
+        .then(res => {
+          if(res.status === 200){
+            setLoading(false)
+            const { data } = res.data?.details;
+            setOptions(getOptions(data));
+          }
+        })
+        .catch(err => console.log(err));
+  }, []);
 
   const updateText = useCallback(
     (value) => {
       setInputValue(value);
+      if(value.length < 2) return;
+      if (!loading) setLoading(true)
 
-      if (value === "") {
-        setOptions(deselectedOptions);
-        return;
-      }
-
-      const filterRegex = new RegExp(value, "i");
-      const resultOptions = deselectedOptions.filter((option) =>
-        option.label.match(filterRegex)
-      );
-      setOptions(resultOptions);
+      fetchCategoryList(value);
     },
-    [deselectedOptions]
+    []
   );
 
   const updateSelection = useCallback(
@@ -90,7 +94,6 @@ function EditGraphic() {
 
       setSelectedOptions(selected);
       setInputValue(selectedValue[0] || "");
-      setIsEditDisabled(false);
     },
     [options]
   );
@@ -108,56 +111,26 @@ function EditGraphic() {
 
   //Autocomplete End
 
-  const getSelecetedGraphicDetail = useCallback(async () => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/getGallery/${parseInt(
-        params.id
-      )}?shop=kamrandevstore.myshopify.com`
-    );
-    setSelectedGallery(data?.data);
-
-    setSelectedCategory(data?.data.category_id.toString());
-    setTags(data?.data?.tags?.split(","));
-    setFile(data?.data?.file);
-    setSelectedStatus(data?.data?.active === 0 ? "InActive" : "Active");
-    setTagInputError(false);
+  const getGalleryDetails = useCallback( () => {
+    axios.post(
+      `https://gangr.uforiaprojects.com/api/local/getGallery/${parseInt(params.id)}?shop=kamrandevstore.myshopify.com`
+    ).then(res => {
+      if(res.status === 200){
+        const { category, tags, file, active } = res.data.data;
+        setSavedData(res.data.data);
+        setSelectedOptions([category.id.toString()]);
+        setInputValue(category.title);
+        setTags(tags?.split(","));
+        setFile(file);
+        setSelectedStatus(active === 0 ? "InActive" : "Active");
+        setTagInputError(false);
+      }
+    })
+        .catch(err => console.log(err));
   }, [params.id]);
-
-  const getCategoriesListWithoutPagination = useCallback(async (value) => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchCategoryWithoutPagination?shop=kamrandevstore.myshopify.com`
-    );
-    setCategoryOptionsList(data?.data);
-  }, []);
-
-  // Validation function for tag input
-  const validateTagInput = () => {
-    if (tags.length === 0) {
-      setTagInputError(true);
-      return true;
-    } else {
-      setTagInputError(false);
-      return false;
-    }
-  };
-
-  const validateCategory = () => {
-    if (selectedOptions[0]) {
-      setCategoryError(false);
-    } else {
-      setCategoryError(true);
-    }
-  };
-
-  useEffect(() => {
-    getCategoriesListWithoutPagination();
-    getSelecetedGraphicDetail();
-  }, [getCategoriesListWithoutPagination, getSelecetedGraphicDetail]);
-  const navigate = useNavigate();
 
   const handleTagInputChange = useCallback((value) => {
     setTagInput(value);
-    setIsEditDisabled(false);
   }, []);
   const handleAddTag = useCallback(() => {
     if (tagInput.trim() !== "") {
@@ -172,7 +145,6 @@ function EditGraphic() {
       const updatedTags = tags.filter((tag, index) => index !== indexToRemove);
 
       setTags(updatedTags);
-      setIsEditDisabled(false);
       if (tags.length <= 1) {
         setTagInputError(true);
       }
@@ -182,252 +154,252 @@ function EditGraphic() {
 
   const handleSelectChangeStatus = useCallback((value) => {
     setSelectedStatus(value);
-    setIsEditDisabled(false);
   }, []);
 
-  //Delete Modal Change
-  const handleChange = useCallback(
-    () => setIsShowDeleteModal(!isShowDeleteModal),
-    [isShowDeleteModal, setIsShowDeleteModal]
-  );
+
+  const validateSubmission = () => {
+    const isCategory = selectedOptions[0], isTag = tags.length !== 0;
+    setCategoryError(!isCategory);
+    setTagInputError(!isTag);
+
+    return isCategory && isTag;
+  }
+
   const editGraphicData = async () => {
-    try {
-      validateTagInput();
-      validateCategory();
-      if (tagInputError === false) {
-        setIsEditLoading(true);
-        const formData = new FormData();
-        formData.append("files[]", file);
-        formData.append("tags", tags.toString());
-        formData.append("active", selectedStatus === "Active" ? 1 : 0);
-        formData.append("category_id", parseInt(selectedOptions[0]));
-        formData.append("id", parseInt(params.id));
-        const { data } = await axios.post(
+    const isValidated = validateSubmission();
+
+    if (isValidated) {
+      setIsEditLoading(true);
+      const formData = new FormData();
+      formData.append("files[]", file);
+      formData.append("tags", tags.toString());
+      formData.append("active", selectedStatus === "Active" ? 1 : 0);
+      formData.append("category_id", parseInt(selectedOptions[0]));
+      formData.append("id", parseInt(params.id));
+      axios.post(
           `https://gangr.uforiaprojects.com/api/local/saveGallery?shop=kamrandevstore.myshopify.com`,
           formData
-        );
-        setIsEditLoading(false);
-        navigate("/gallery-listing");
-      }
-    } catch (err) {
-      console.log(err);
-      setIsEditLoading(false);
-      setIsSaveError(true);
+      )
+          .then(res => {
+            if(res.status === 200){
+              setIsEditLoading(false);
+              navigate("/gallery-listing");
+            }
+          })
+          .catch(err => console.log(err));
     }
   };
 
-  const statusOptions = [
-    { label: "Active", value: "Active" },
-    { label: "InActive", value: "InActive" },
-  ];
+  const deleteGallery = () => {
+    setIsLoadingDelete(true);
+    axios.post(
+        `https://gangr.uforiaprojects.com/api/local/deleteGallery/${params.id}?shop=kamrandevstore.myshopify.com`
+    )
+        .then(res => {
+          if(res.status === 200){
+            setIsLoadingDelete(false);
+            navigate("/gallery-listing");
+          }
+        });
+  };
 
-  return categoryOptionsList && selectedGallery ? (
-    <Frame>
-      {isSaveError && (
-        <Banner
-          title="Erorr while saving gallery"
-          status="critical"
-          onDismiss={() => {
-            setIsSaveError(false);
-          }}
-        >
-          <p>Unexpected error occour. Kindly try again</p>
-        </Banner>
-      )}
-      {isSaveError && (
-        <Toast
-          content="Error while updating data"
-          duration={2000}
-          onDismiss={() => setIsSaveError(false)}
-        />
-      )}
+  useEffect(() => {
+    if(savedData){
+      const {tags: tagsList, active, category } = savedData;
+      const obj = {
+        "Active": 1,
+        "InActive": 0,
+      };
+      if(tags.toString() === tagsList && obj[selectedStatus] === active && selectedOptions[0] === category.id.toString()){
+        setIsEditDisabled(true);
+      } else setIsEditDisabled(false);
+    }
+  }, [tags, selectedStatus, selectedOptions, savedData])
 
-      {isDeleteError && (
-        <Toast
-          content="Error while deleting gallery"
-          duration={2000}
-          onDismiss={() => setIsDeleteError(false)}
-        />
-      )}
-      {isShowDeleteModal && (
-        <Modal
-          open={isShowDeleteModal}
-          onClose={handleChange}
-          title={<FormattedMessage id="deleteGraphicTitle" />}
-          primaryAction={{
-            content: <FormattedMessage id="deleteGraphicTitle" />,
-            loading: isLoadingDelete,
-            onAction: async () => {
-              try {
-                setIsLoadingDelete(true);
-                await axios.post(
-                  `https://gangr.uforiaprojects.com/api/local/deleteGallery/${params.id}?shop=kamrandevstore.myshopify.com`
-                );
-                navigate("/gallery-listing");
-                setIsLoadingDelete(false);
-              } catch (error) {
-                setIsDeleteError(true);
-                setIsLoadingDelete(false);
-              }
-            },
-          }}
-        >
-          <Modal.Section>
-            <Text>{<FormattedMessage id="deleteGraphicDescription" />}</Text>
-          </Modal.Section>
-        </Modal>
-      )}
-      <Box>
+  useEffect(() => {
+    getGalleryDetails();
+  }, []);
+
+  return (
+      <>
+        <Frame>
         <Page
-          backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
-          title={<FormattedMessage id="editGraphicTitle" />}
+            backAction={{ content: "GalleryListing", url: "/gallery-listing" }}
+            title={<FormattedMessage id="editGraphicTitle" />}
         >
-          <Layout>
-            <Layout.AnnotatedSection
-              id="selectCategory"
-              title={<FormattedMessage id="selectCategoryLabel" />}
-              description={<FormattedMessage id="selectCategoryDescription" />}
-            >
-              <Card sectioned>
-                <FormLayout>
-                  <Autocomplete
-                    options={options}
-                    selected={selectedOptions}
-                    onSelect={updateSelection}
-                    textField={textField}
-                  />
-                  {categoryError && (
-                    <InlineError
-                      message={<FormattedMessage id="categoryError" />}
-                    />
-                  )}
-                </FormLayout>
-              </Card>
-            </Layout.AnnotatedSection>
-          </Layout>
+          {file ? (
+              <>
+                <Layout>
+                  <Layout.AnnotatedSection
+                      id="selectCategory"
+                      title={<FormattedMessage id="selectCategoryLabel" />}
+                      description={<FormattedMessage id="selectCategoryDescription" />}
+                  >
+                    <Card sectioned>
+                      <FormLayout>
+                        <Autocomplete
+                            options={options}
+                            selected={selectedOptions}
+                            onSelect={updateSelection}
+                            textField={textField}
+                            loading={loading}
+                        />
+                        {categoryError && (
+                            <InlineError
+                                message={<FormattedMessage id="categoryError" />}
+                            />
+                        )}
+                      </FormLayout>
+                    </Card>
+                  </Layout.AnnotatedSection>
+                </Layout>
 
-          <Box style={{ marginTop: "10px" }}>
-            <Card>
-              <Box style={{ marginBottom: "15px" }}>
-                <Text as="h4" fontWeight="bold">
-                  {<FormattedMessage id="mediaLabel" />}
-                </Text>
-              </Box>
-              <Thumbnail source={file} size="large" style={{ width: "100%" }} />
-            </Card>
-          </Box>
+                <Box style={{ marginTop: "10px" }}>
+                  <Card>
+                    <Box style={{ marginBottom: "15px" }}>
+                      <Text as="h4" fontWeight="bold">
+                        {<FormattedMessage id="mediaLabel" />}
+                      </Text>
+                    </Box>
+                    <Thumbnail source={file} size="large" style={{ width: "100%" }} />
+                  </Card>
+                </Box>
 
-          <Box style={{ marginTop: "35px" }}>
-            <Layout>
-              <Layout.AnnotatedSection
-                id="addTags"
-                title={<FormattedMessage id="addTagsLabel" />}
-                description={<FormattedMessage id="addTagsDescription" />}
-              >
-                <Card sectioned>
-                  <FormLayout>
-                    <VerticalStack align="center">
-                      <HorizontalStack align="space-between">
-                        <div
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleAddTag();
-                            }
-                          }}
-                          style={{ width: "80%" }}
-                        >
-                          <TextField
-                            label={<FormattedMessage id="addTagsLabel" />}
-                            value={tagInput}
-                            onChange={handleTagInputChange}
-                            placeholder={"Add a tag"}
+                <Box style={{ marginTop: "35px" }}>
+                  <Layout>
+                    <Layout.AnnotatedSection
+                        id="addTags"
+                        title={<FormattedMessage id="addTagsLabel" />}
+                        description={<FormattedMessage id="addTagsDescription" />}
+                    >
+                      <Card sectioned>
+                        <FormLayout>
+                          <VerticalStack align="center">
+                            <HorizontalStack align="space-between">
+                              <div
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleAddTag();
+                                    }
+                                  }}
+                                  style={{ width: "80%" }}
+                              >
+                                <TextField
+                                    label={<FormattedMessage id="addTagsLabel" />}
+                                    value={tagInput}
+                                    onChange={handleTagInputChange}
+                                    placeholder={"Add a tag"}
+                                />
+                              </div>
+                              <Box style={{ marginTop: "23px" }}>
+                                <Button onClick={handleAddTag}>
+                                  {<FormattedMessage id="addTagBtn" />}
+                                </Button>
+                              </Box>
+                            </HorizontalStack>
+                          </VerticalStack>
+
+                          {tags?.length > 0 && (
+                              <Box>
+                                <HorizontalStack>
+                                  {tags?.map((tag, index) => (
+                                      <Box style={{ marginRight: "10px" }} key={index}>
+                                        <Tag onRemove={() => handleRemoveTag(index)}>
+                                          {tag}
+                                        </Tag>
+                                      </Box>
+                                  ))}
+                                </HorizontalStack>
+                              </Box>
+                          )}
+                          {tagInputError && (
+                              <InlineError message="At least one tag must be provided" />
+                          )}
+                        </FormLayout>
+                      </Card>
+                    </Layout.AnnotatedSection>
+                  </Layout>
+                </Box>
+
+                <Box style={{ marginTop: "35px" }}>
+                  <Layout>
+                    <Layout.AnnotatedSection
+                        id="graphicsStatus"
+                        title={<FormattedMessage id="graphicsStatusLabel" />}
+                        description={
+                          <FormattedMessage id="graphicsStatusDescription" />
+                        }
+                    >
+                      <Card sectioned>
+                        <FormLayout>
+                          <Select
+                              label={<FormattedMessage id="statusSelectLabel" />}
+                              options={statusOptions}
+                              onChange={handleSelectChangeStatus}
+                              value={selectedStatus}
                           />
-                        </div>
-                        <Box style={{ marginTop: "23px" }}>
-                          <Button onClick={handleAddTag}>
-                            {<FormattedMessage id="addTagBtn" />}
-                          </Button>
-                        </Box>
-                      </HorizontalStack>
-                    </VerticalStack>
+                        </FormLayout>
+                      </Card>
+                    </Layout.AnnotatedSection>
+                  </Layout>
+                </Box>
 
-                    {tags?.length > 0 && (
-                      <Box>
-                        <HorizontalStack>
-                          {tags?.map((tag, index) => (
-                            <Box style={{ marginRight: "10px" }} key={index}>
-                              <Tag onRemove={() => handleRemoveTag(index)}>
-                                {tag}
-                              </Tag>
-                            </Box>
-                          ))}
-                        </HorizontalStack>
-                      </Box>
-                    )}
-                    {tagInputError && (
-                      <InlineError message="At least one tag must be provided" />
-                    )}
-                  </FormLayout>
-                </Card>
-              </Layout.AnnotatedSection>
-            </Layout>
-          </Box>
-
-          <Box style={{ marginTop: "35px" }}>
-            <Layout>
-              <Layout.AnnotatedSection
-                id="graphicsStatus"
-                title={<FormattedMessage id="graphicsStatusLabel" />}
-                description={
-                  <FormattedMessage id="graphicsStatusDescription" />
-                }
-              >
-                <Card sectioned>
-                  <FormLayout>
-                    <Select
-                      label={<FormattedMessage id="statusSelectLabel" />}
-                      options={statusOptions}
-                      onChange={handleSelectChangeStatus}
-                      value={selectedStatus}
-                    />
-                  </FormLayout>
-                </Card>
-              </Layout.AnnotatedSection>
-            </Layout>
-          </Box>
-
-          <HorizontalStack align="end">
-            <Box style={{ marginBottom: "10px", marginRight: "10px" }}>
-              <Button
-                outline
-                onClick={() => {
-                  setIsShowDeleteModal(true);
-                }}
-              >
-                {<FormattedMessage id="deleteGraphicBtn" />}
-              </Button>
-            </Box>
-            <Box style={{ marginBottom: "10px" }}>
-              <Button
-                primary
-                onClick={editGraphicData}
-                loading={isEditLoading}
-                disabled={isEditDisabled}
-              >
-                {<FormattedMessage id="editGraphicBtn" />}
-              </Button>
-            </Box>
-          </HorizontalStack>
+                <HorizontalStack align="end">
+                  <Box style={{ marginBottom: "10px", marginRight: "10px" }}>
+                    <Button
+                        outline
+                        onClick={() => {
+                          setIsShowDeleteModal(true);
+                        }}
+                    >
+                      {<FormattedMessage id="deleteGraphicBtn" />}
+                    </Button>
+                  </Box>
+                  <Box style={{ marginBottom: "10px" }}>
+                    <Button
+                        primary
+                        onClick={editGraphicData}
+                        loading={isEditLoading}
+                        disabled={isEditDisabled}
+                    >
+                      <FormattedMessage id="saveBtn" />
+                    </Button>
+                  </Box>
+                </HorizontalStack>
+              </>
+          ) : (
+              <Box padding={10}>
+                <HorizontalStack align="center">
+                  <Spinner />
+                </HorizontalStack>
+              </Box>
+          )}
         </Page>
-      </Box>
-    </Frame>
-  ) : (
-    <Box padding={10}>
-      <HorizontalStack align="center">
-        <Spinner />
-      </HorizontalStack>
-    </Box>
-  );
+          {isShowDeleteModal && (
+              <Modal
+                  open={isShowDeleteModal}
+                  onClose={() => setIsShowDeleteModal(false)}
+                  title={<FormattedMessage id="deleteGraphicTitle" />}
+                  primaryAction={{
+                    content: <FormattedMessage id="yes" />,
+                    loading: isLoadingDelete,
+                    onAction: deleteGallery,
+                  }}
+                  secondaryActions={{
+                    content: <FormattedMessage id="no" />,
+                    onAction: () => setIsShowDeleteModal(false),
+                  }}
+              >
+                <Modal.Section>
+                  <Text>{<FormattedMessage id="deleteGraphicDescription" />}</Text>
+                </Modal.Section>
+              </Modal>
+          )}
+          <Box>
+          </Box>
+        </Frame>
+      </>
+  )
 }
 
 export default EditGraphic;

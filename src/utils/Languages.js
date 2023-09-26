@@ -86,7 +86,8 @@ const messagesInEnglish = {
   //Delete Category
   deleteCategoryModalTitle: "Delete Category",
   deleteCategoryYesBtn: "Delete",
-  deleteCategoryNoBtn: "No",
+  no: "No",
+  yes: "Yes"
 };
 
 export { messagesInEnglish, messagesInFrench };
