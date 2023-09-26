@@ -24,15 +24,14 @@ import {
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
-import { FormattedMessage, useIntl } from "react-intl";
-import SelectCategoryAutoComplete from "./SelectCategoryAutoComplete";
+import { FormattedMessage } from "react-intl";
 import { SearchMinor } from "@shopify/polaris-icons";
 
 function EditGraphic() {
   const params = useParams();
   const [isSaveError, setIsSaveError] = useState(false);
   const [isShowDeleteModal, setIsShowDeleteModal] = useState(false);
-  const [categoriesList, setCategoriesList] = useState();
+  // const [categoriesList, setCategoriesList] = useState();
   const [selectedGallery, setSelectedGallery] = useState();
   const [selectedCategory, setSelectedCategory] = useState();
   const [categoryOptionsList, setCategoryOptionsList] = useState();
@@ -122,17 +121,7 @@ function EditGraphic() {
     setFile(data?.data?.file);
     setSelectedStatus(data?.data?.active === 0 ? "InActive" : "Active");
     setTagInputError(false);
-
-    //Pre filled category
-    // updateSelection([data?.data?.category_id.toString()]);
   }, [params.id]);
-
-  const getCategoriesList = useCallback(async (pageNum) => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
-    );
-    setCategoriesList(data.details);
-  }, []);
 
   const getCategoriesListWithoutPagination = useCallback(async (value) => {
     const { data } = await axios.post(
@@ -161,13 +150,9 @@ function EditGraphic() {
   };
 
   useEffect(() => {
-    getCategoriesList();
-    getSelecetedGraphicDetail();
-  }, [getCategoriesList, getSelecetedGraphicDetail]);
-
-  useEffect(() => {
     getCategoriesListWithoutPagination();
-  }, [getCategoriesListWithoutPagination]);
+    getSelecetedGraphicDetail();
+  }, [getCategoriesListWithoutPagination, getSelecetedGraphicDetail]);
   const navigate = useNavigate();
 
   const handleTagInputChange = useCallback((value) => {
@@ -194,10 +179,6 @@ function EditGraphic() {
     },
     [tags]
   );
-  const handleSelectChangeCategory = useCallback((value) => {
-    setSelectedCategory(value);
-    setIsEditDisabled(false);
-  }, []);
 
   const handleSelectChangeStatus = useCallback((value) => {
     setSelectedStatus(value);
@@ -219,7 +200,6 @@ function EditGraphic() {
         formData.append("files[]", file);
         formData.append("tags", tags.toString());
         formData.append("active", selectedStatus === "Active" ? 1 : 0);
-        // formData.append("category_id", parseInt(selectedCategory));
         formData.append("category_id", parseInt(selectedOptions[0]));
         formData.append("id", parseInt(params.id));
         const { data } = await axios.post(
@@ -241,7 +221,7 @@ function EditGraphic() {
     { label: "InActive", value: "InActive" },
   ];
 
-  return categoriesList && selectedGallery ? (
+  return categoryOptionsList && selectedGallery ? (
     <Frame>
       {isSaveError && (
         <Banner
@@ -310,12 +290,6 @@ function EditGraphic() {
             >
               <Card sectioned>
                 <FormLayout>
-                  {/* <Select
-                    label={messages.selectCategoryLabel}
-                    options={categoryOptions}
-                    onChange={handleSelectChangeCategory}
-                    value={selectedCategory}
-                  /> */}
                   <Autocomplete
                     options={options}
                     selected={selectedOptions}
@@ -339,7 +313,6 @@ function EditGraphic() {
                   {<FormattedMessage id="mediaLabel" />}
                 </Text>
               </Box>
-              {/* <Media files={files} setFiles={setFiles} isDisabled={true} /> */}
               <Thumbnail source={file} size="large" style={{ width: "100%" }} />
             </Card>
           </Box>

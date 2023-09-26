@@ -30,11 +30,9 @@ import { FormattedMessage } from "react-intl";
 function AddGraphic() {
   const navigate = useNavigate();
   const [files, setFiles] = useState([]);
-  const [categoriesList, setCategoriesList] = useState();
 
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const [isSaveError, setIsSaveError] = useState(false);
-  // const [selectedCategory, setSelectedCategory] = useState();
   const [selectedStatus, setSelectedStatus] = useState("Active");
   const [categoryError, setCategoryError] = useState();
   const [tags, setTags] = useState([]);
@@ -109,13 +107,6 @@ function AddGraphic() {
     setCategoryOptionsList(data?.data);
   }, []);
 
-  const getCategoriesList = useCallback(async (pageNum) => {
-    const { data } = await axios.post(
-      `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
-    );
-    setCategoriesList(data?.details);
-  }, []);
-
   // State variables for error messages
   const [tagInputError, setTagInputError] = useState();
   const [filesError, setFilesError] = useState();
@@ -145,20 +136,10 @@ function AddGraphic() {
       setCategoryError(true);
     }
   };
-  useEffect(() => {
-    getCategoriesList();
-  }, [getCategoriesList]);
 
   useEffect(() => {
     getCategoriesListWithoutPagination();
   }, [getCategoriesListWithoutPagination]);
-
-  // After fetching categoriesList, set the initial selectedCategory
-  // useEffect(() => {
-  //   if (categoriesList && categoriesList.data.length > 0) {
-  //     setSelectedCategory(categoriesList.data[0].id.toString());
-  //   }
-  // }, [categoriesList]);
 
   useEffect(() => {
     if (files.length > 0) {
@@ -225,7 +206,7 @@ function AddGraphic() {
     { label: "InActive", value: "InActive" },
   ];
 
-  return categoriesList ? (
+  return categoryOptionsList ? (
     <Frame>
       <Box padding={"10"}>
         {isSaveError && (
