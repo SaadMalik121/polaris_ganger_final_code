@@ -17,6 +17,7 @@ import {
   Text,
   TextField,
   Toast,
+  VerticalStack,
 } from "@shopify/polaris";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchMinor } from "@shopify/polaris-icons";
@@ -24,10 +25,9 @@ import { SearchMinor } from "@shopify/polaris-icons";
 import Media from "./Media";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { FormattedMessage, useIntl } from "react-intl";
+import { FormattedMessage } from "react-intl";
 
 function AddGraphic() {
-  const { messages } = useIntl();
   const navigate = useNavigate();
   const [files, setFiles] = useState([]);
   const [categoriesList, setCategoriesList] = useState();
@@ -113,7 +113,7 @@ function AddGraphic() {
     const { data } = await axios.post(
       `https://gangr.uforiaprojects.com/api/local/searchCategory?shop=kamrandevstore.myshopify.com&page=${pageNum}`
     );
-    setCategoriesList(data?.data);
+    setCategoriesList(data?.details);
   }, []);
 
   // State variables for error messages
@@ -301,23 +301,31 @@ function AddGraphic() {
               >
                 <Card sectioned>
                   <FormLayout>
-                    <div
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddTag();
-                        }
-                      }}
-                    >
-                      <TextField
-                        label={<FormattedMessage id="addTagsLabel" />}
-                        value={tagInput}
-                        onChange={handleTagInputChange}
-                        placeholder={"Add a tag"}
-                      />
-                    </div>
-                    <Button onClick={handleAddTag}>
-                      {<FormattedMessage id="addTagBtn" />}
-                    </Button>
+                    <VerticalStack align="center">
+                      <HorizontalStack align="space-between">
+                        <div
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleAddTag();
+                            }
+                          }}
+                          style={{ width: "80%" }}
+                        >
+                          <TextField
+                            label={<FormattedMessage id="addTagsLabel" />}
+                            value={tagInput}
+                            onChange={handleTagInputChange}
+                            placeholder={"Add a tag"}
+                          />
+                        </div>
+                        <Box style={{ marginTop: "23px" }}>
+                          <Button onClick={handleAddTag}>
+                            {<FormattedMessage id="addTagBtn" />}
+                          </Button>
+                        </Box>
+                      </HorizontalStack>
+                    </VerticalStack>
+
                     {tags.length > 0 && (
                       <Box>
                         <HorizontalStack>
