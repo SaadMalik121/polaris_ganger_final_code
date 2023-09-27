@@ -9,21 +9,15 @@ import {
   Box,
   Toast,
   Pagination,
-  Modal,
-  Text,
 } from "@shopify/polaris";
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { FormattedMessage } from "react-intl";
 import CategoryModal from "./CategoryModal";
 
-function GraphicsIndexTable({
-  refetch,
-}) {
-
+function GraphicsIndexTable({ refetch }) {
   const navigate = useNavigate();
-  const [listingData, setListingData] = useState([])
+  const [listingData, setListingData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasPrevious, setHasPrevious] = useState(false);
   const [hasNext, setHasNext] = useState(false);
@@ -36,7 +30,8 @@ function GraphicsIndexTable({
   const [isSuccessCategoryEdited, setIsSuccessCategoryEdited] = useState(false);
 
   //Delete Category
-  const [showCategoryDeletedAlert, setShowCategoryDeletedAlert] = useState(false);
+  const [showCategoryDeletedAlert, setShowCategoryDeletedAlert] =
+    useState(false);
 
   const [itemStrings] = useState(["Gallery", "Categories"]);
 
@@ -50,38 +45,39 @@ function GraphicsIndexTable({
 
   const handleEditCategory = useCallback(async (data) => {
     setEditCategoryData(data);
+
     setShowCategoryModal(true);
   }, []);
 
   const getListingData = async () => {
-    let url = selected === 0 ? `https://gangr.uforiaprojects.com/api/local/searchGallery?page=${currentPage}&shop=kamrandevstore.myshopify.com` : `https://gangr.uforiaprojects.com/api/local/searchCategory?page=${currentPage}&shop=kamrandevstore.myshopify.com`;
+    let url =
+      selected === 0
+        ? `https://gangr.uforiaprojects.com/api/local/searchGallery?page=${currentPage}&shop=kamrandevstore.myshopify.com`
+        : `https://gangr.uforiaprojects.com/api/local/searchCategory?page=${currentPage}&shop=kamrandevstore.myshopify.com`;
     setIsLoading(true);
 
-      await axios.post(url, { keyword: queryValue })
-          .then( res => {
-            if(res.status === 200){
-              setIsLoading(false);
-              const { data, prev_page_url, next_page_url } = res.data.details;
-              setListingData(data);
-              next_page_url ? setHasNext(true) : setHasNext(false);
-              prev_page_url ? setHasPrevious(true) : setHasPrevious(false);
-            }
-          })
-          .catch(err => console.log(err));
+    await axios
+      .post(url, { keyword: queryValue })
+      .then((res) => {
+        if (res.status === 200) {
+          setIsLoading(false);
+          const { data, prev_page_url, next_page_url } = res.data.details;
+          setListingData(data);
+          next_page_url ? setHasNext(true) : setHasNext(false);
+          prev_page_url ? setHasPrevious(true) : setHasPrevious(false);
+        }
+      })
+      .catch((err) => console.log(err));
   };
-
 
   const { mode, setMode } = useSetIndexFiltersMode();
   const onHandleCancel = () => {
     setQueryValue("");
   };
 
-  const handleFiltersQueryChange = useCallback(
-    async (value) => {
-      setQueryValue(value);
-    },
-    []
-  );
+  const handleFiltersQueryChange = useCallback(async (value) => {
+    setQueryValue(value);
+  }, []);
 
   const handleQueryValueRemove = useCallback(() => setQueryValue(""), []);
   const handleFiltersClearAll = useCallback(() => {
@@ -95,18 +91,20 @@ function GraphicsIndexTable({
     plural: "graphics",
   };
 
-  let { selectedResources, allResourcesSelected, handleSelectionChange } = useIndexResourceState(listingData);
+  let { selectedResources, allResourcesSelected, handleSelectionChange } =
+    useIndexResourceState(listingData);
 
-  const rowMarkup = selected === 0 ? listingData.map(
-      ({ file, category, active, tags, id }) => (
+  const rowMarkup =
+    selected === 0
+      ? listingData.map(({ file, category, active, tags, id }) => (
           <IndexTable.Row
-              id={id}
-              key={id}
-              selected={selectedResources.includes(id)}
-              onClick={() => navigate(`/edit-graphic/${id}`)}
+            id={id}
+            key={id}
+            selected={selectedResources.includes(id)}
+            onClick={() => navigate(`/edit-graphic/${id}`)}
           >
             <IndexTable.Cell>
-              <Thumbnail source={file} size="small" alt="img"/>
+              <Thumbnail source={file} size="small" alt="img" />
             </IndexTable.Cell>
             <IndexTable.Cell>{category?.title}</IndexTable.Cell>
             <IndexTable.Cell>{tags}</IndexTable.Cell>
@@ -116,28 +114,28 @@ function GraphicsIndexTable({
               </Badge>
             </IndexTable.Cell>
           </IndexTable.Row>
-      )
-  ) : listingData?.map(({ id, title, active }) => (
-      <IndexTable.Row
-          id={id}
-          key={id}
-          selected={selectedResources.includes(id)}
-          onClick={() => {
-            handleEditCategory({ id, title, active });
-          }}
-      >
-        <IndexTable.Cell></IndexTable.Cell>
-        <IndexTable.Cell>{title}</IndexTable.Cell>
-        <IndexTable.Cell>
-          <Badge status={active === 0 ? "critical" : "success"}>
-            {active === 0 ? "InActive" : "Active"}
-          </Badge>
-        </IndexTable.Cell>
-      </IndexTable.Row>
-  ));
+        ))
+      : listingData?.map(({ id, title, active }) => (
+          <IndexTable.Row
+            id={id}
+            key={id}
+            selected={selectedResources.includes(id)}
+            onClick={() => {
+              handleEditCategory({ id, title, active });
+            }}
+          >
+            <IndexTable.Cell></IndexTable.Cell>
+            <IndexTable.Cell>{title}</IndexTable.Cell>
+            <IndexTable.Cell>
+              <Badge status={active === 0 ? "critical" : "success"}>
+                {active === 0 ? "InActive" : "Active"}
+              </Badge>
+            </IndexTable.Cell>
+          </IndexTable.Row>
+        ));
 
   useEffect(() => {
-    if(queryValue.length === 0 || queryValue.length > 2){
+    if (queryValue.length === 0 || queryValue.length > 2) {
       getListingData();
     }
   }, [queryValue]);
@@ -153,13 +151,16 @@ function GraphicsIndexTable({
 
   return (
     <>
-      {showCategoryModal && <CategoryModal
+      {showCategoryModal && (
+        <CategoryModal
           // show={showCategoryModal}
           onHide={() => setShowCategoryModal(false)}
           editCategoryData={editCategoryData}
+          savedCategory={editCategoryData}
           onSuccess={() => setIsSuccessCategoryEdited(true)}
           onDelete={() => setShowCategoryDeletedAlert(true)}
-      /> }
+        />
+      )}
       <IndexFilters
         queryValue={queryValue}
         queryPlaceholder="Searching in all"
@@ -192,7 +193,8 @@ function GraphicsIndexTable({
         >
           <Spinner />
         </Box>
-      ) : <IndexTable
+      ) : (
+        <IndexTable
           resourceName={resourceName}
           itemCount={listingData.length}
           selectedItemsCount={
@@ -211,7 +213,8 @@ function GraphicsIndexTable({
           }
         >
           {rowMarkup}
-        </IndexTable>}
+        </IndexTable>
+      )}
 
       {/* Delete Category Confirmation Modal */}
       {showCategoryDeletedAlert && (
